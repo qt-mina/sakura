@@ -1,8 +1,8 @@
 import asyncio
 import random
 from pyrogram import Client, filters
-from pyrogram.types import Message
-from pyrogram.enums import ChatAction
+from pyrogram.types import Message, ChatMemberUpdated
+from pyrogram.enums import ChatAction, ChatMemberStatus
 from Sakura.Core.helpers import fetch_user, log_action, should_reply, get_error, log_response
 from Sakura.Services.limiter import check_limit
 from Sakura.Modules.reactions import handle_reaction
@@ -12,13 +12,13 @@ from Sakura.Modules.typing import send_typing
 from Sakura.Chat.chat import get_response
 from Sakura.Chat.voice import generate_voice
 from Sakura.Database.cache import set_last_message, get_last_message
+from Sakura.Database.database import save_group
 from Sakura.Services.broadcast import execute_broadcast
 from Sakura import state
 from Sakura.Core.config import OWNER_ID
 from Sakura.Modules.stickers import handle_sticker
 from Sakura.Modules.image import handle_image
 from Sakura.Modules.poll import handle_poll
-from Sakura.Services.tracking import track_user
 
 @Client.on_message(
     (filters.text | filters.sticker | filters.voice | filters.video_note |
@@ -34,8 +34,6 @@ async def handle_messages(client: Client, message: Message) -> None:
         user_id = message.from_user.id
         chat_type = message.chat.type.name.lower()
         log_action("DEBUG", f"📨 Processing message in {chat_type}", user_info)
-
-        await track_user(message, user_info)
 
         if user_id == OWNER_ID and user_id in state.broadcast_mode:
             log_action("INFO", f"📢 Executing broadcast to {state.broadcast_mode[user_id]}", user_info)
@@ -115,3 +113,32 @@ async def handle_messages(client: Client, message: Message) -> None:
         log_action("ERROR", f"❌ Error handling message: {e}", user_info)
         if message.text:
             await message.reply_text(get_error())
+
+
+@Client.on_chat_member_updated()
+async def group_tracking_handler(client: Client, member_update: ChatMemberUpdated):
+    """Track when the bot is added to a new group."""
+    # Check if the update is for the bot itself and it was added as a member
+    if (
+        member_update.new_chat_member
+        and member_update.new_chat_member.user.id == client.me.id
+        and member_update.new_chat_member.status == ChatMemberStatus.MEMBER
+    ):
+        chat_id = member_update.chat.id
+        chat_type = member_update.chat.type.name.lower() if member_update.chat.type else "unknown"
+        user_info = {
+            "chat_id": chat_id,
+            "chat_title": member_update.chat.title,
+            "chat_type": chat_type
+        }
+
+        if chat_id not in state.group_ids:
+            state.group_ids.add(chat_id)
+            log_action("INFO", "➕ Bot added to a new group, saving to database.", user_info)
+            # Run the database operation in the background
+            asyncio.create_task(save_group(
+                chat_id=chat_id,
+                title=member_update.chat.title,
+                username=member_update.chat.username,
+                chat_type=chat_type
+            ))

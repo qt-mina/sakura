@@ -1,3 +1,4 @@
+import asyncio
 import base64
 from typing import Optional, Dict
 
@@ -60,7 +61,7 @@ async def get_response(
 
         ai_response = response.text.strip() if response.text else get_fallback()
 
-        await update_history(user_id, user_message, ai_response)
+        asyncio.create_task(update_history(user_id, user_message, ai_response))
 
         log_action("INFO", f"✅ AI response generated: '{ai_response[:50]}...'", user_info)
         return ai_response
