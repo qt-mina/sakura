@@ -55,7 +55,7 @@ async def post_shutdown(app: Client):
     logger.info("🌸 Sakura Bot shutdown completed!")
 
 
-async def main() -> None:
+async def sakura() -> None:
     """Main function to initialize and run the bot"""
     logger.info("🌸 Sakura Bot is starting up...")
     if not validate_config():
@@ -81,30 +81,34 @@ async def main() -> None:
         plugins=dict(root="Sakura.Modules")
     )
 
-    try:
-        await app.start()
-        await post_init(app)
-        logger.info("🌸 Sakura Bot is now online!")
-        await asyncio.Event().wait()
-    except FloodWait as e:
-        logger.warning(f"⏳ FloodWait triggered: Sleeping for {e.value} seconds...")
-        await asyncio.sleep(e.value)
-        logger.info("🔄 Retrying main after FloodWait...")
-        return await main()  # restart bot after wait
-    except KeyboardInterrupt:
-        logger.info("🛑 Bot stopped by user.")
-    except Exception as e:
-        logger.error(f"💥 An unexpected error occurred: {e}", exc_info=True)
-    finally:
-        logger.info("🔌 Shutting down...")
-        await post_shutdown(app)
-        if app.is_connected:
-            await app.stop()
-        logger.info("🌸 Sakura Bot has been shut down.")
+    while True:  # Loop to retry after FloodWait without recursion
+        try:
+            await app.start()
+            await post_init(app)
+            logger.info("🌸 Sakura Bot is now online!")
+            await asyncio.Event().wait()
+        except FloodWait as e:
+            logger.warning(f"⏳ FloodWait triggered: Sleeping for {e.value} seconds...")
+            await asyncio.sleep(e.value)
+            logger.info("🔄 Retrying after FloodWait...")
+            continue  # retry loop
+        except KeyboardInterrupt:
+            logger.info("🛑 Bot stopped by user.")
+            break
+        except Exception as e:
+            logger.error(f"💥 An unexpected error occurred: {e}", exc_info=True)
+            break
+        finally:
+            logger.info("🔌 Shutting down...")
+            await post_shutdown(app)
+            if app.is_connected:
+                await app.stop()
+            logger.info("🌸 Sakura Bot has been shut down.")
+            break  # exit loop after cleanup
 
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        asyncio.run(sakura())
     except KeyboardInterrupt:
         pass
