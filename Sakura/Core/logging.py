@@ -28,8 +28,8 @@ class ColoredFormatter(logging.Formatter):
         original_format = super().format(record)
         # Get color based on log level
         color = self.COLORS.get(record.levelname, Colors.RESET)
-        # Apply bold for INFO and DEBUG levels
-        bold = Colors.BOLD if record.levelname in ('INFO', 'DEBUG') else ''
+        # Apply bold for ERROR and WARNING levels
+        bold = Colors.BOLD if record.levelname in ('ERROR', 'WARNING') else ''
         # Apply color and bold to the entire message
         colored_format = f"{bold}{color}{original_format}{Colors.RESET}"
         return colored_format
