@@ -34,7 +34,7 @@ async def handle_poll(client: Client, message: Message) -> None:
 
         response = await analyze_poll(poll_question, poll_options, user_info, message.from_user.id)
 
-        log_action("DEBUG", f"📤 Sending poll analysis: '{response[:50]}...'", user_info)
+        log_action("DEBUG", f"📤 Sending poll analysis: '{response}'", user_info)
         await message.reply_text(response)
         log_action("INFO", "✅ Poll analysis response sent successfully", user_info)
 

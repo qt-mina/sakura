@@ -149,7 +149,7 @@ async def handle_reaction(client: Client, message: Message, user_info: Dict[str,
         if not message_text:
             return
 
-        log_action("DEBUG", f"🤔 Analyzing message for reaction: '{message_text[:50]}...'", user_info)
+        log_action("DEBUG", f"🤔 Analyzing message for reaction: '{message_text}'", user_info)
 
         found_context = None
         for context, keywords in REACTION_KEYWORDS.items():

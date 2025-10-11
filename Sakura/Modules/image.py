@@ -35,7 +35,7 @@ async def handle_image(client: Client, message: Message) -> None:
 
         response = await get_response(caption, message.from_user.id, user_info, image_bytes=image_bytes)
 
-        log_action("DEBUG", f"📤 Sending image analysis: '{response[:50]}...'", user_info)
+        log_action("DEBUG", f"📤 Sending image analysis: '{response}'", user_info)
         await message.reply_text(response)
         log_action("INFO", "✅ Image analysis response sent successfully", user_info)
 
