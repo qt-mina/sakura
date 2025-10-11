@@ -56,18 +56,15 @@ async def get_response(
                     "parts": [{"text": msg['content']}]
                 })
         
-        # Prepare current message with optional image
+        # Send message and get response
         if image_bytes:
             image_data = base64.b64encode(image_bytes).decode('utf-8')
-            message_parts = [
-                {"text": f"{user_message or 'What do you see in this image?'}"},
-                {"inline_data": {"mime_type": "image/jpeg", "data": image_data}}
-            ]
+            response = chat_session.send_message([
+                user_message or 'What do you see in this image?',
+                genai.upload_file(data=base64.b64decode(image_data), mime_type="image/jpeg")
+            ])
         else:
-            message_parts = [{"text": user_message}]
-        
-        # Send message and get response
-        response = chat_session.send_message(message_parts)
+            response = chat_session.send_message(user_message)
         ai_response = response.text.strip() if response.text else get_fallback()
         
         # Update history
