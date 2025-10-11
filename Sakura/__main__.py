@@ -105,16 +105,22 @@ async def sakura() -> None:
 
 
 if __name__ == "__main__":
-    # Install uvloop BEFORE creating the event loop
+    logger.info("🌸 Sakura is getting ready...")
+    
     try:
         uvloop.install()
-        logger.info("🚀 uvloop installed successfully")
+        logger.info("⚡ Sakura using uvloop jutsu")
     except ImportError:
-        logger.warning("⚠️ uvloop not available - using default asyncio event loop")
+        logger.warning("💫 Sakura using default loop jutsu")
     except Exception as e:
-        logger.warning(f"⚠️ uvloop setup failed: {e} - using default asyncio event loop")
+        logger.warning(f"😭 Sakura uvloop jutsu failed: {e}")
     
     try:
         asyncio.run(sakura())
     except KeyboardInterrupt:
+        logger.info("👋 Sakura says bye bye")
         pass
+    except Exception as e:
+        logger.error(f"👊 Sakura faced an enemy: {e}", exc_info=True)
+    finally:
+        logger.info("💤 Sakura gone for sleeping")
