@@ -14,7 +14,6 @@ class Colors:
 # Custom formatter for colored logs
 class ColoredFormatter(logging.Formatter):
     """Custom formatter to add colors to entire log messages"""
-
     # Color mapping for log levels
     COLORS = {
         'DEBUG': Colors.GREEN,
@@ -22,44 +21,39 @@ class ColoredFormatter(logging.Formatter):
         'WARNING': Colors.BLUE,
         'ERROR': Colors.RED,
     }
-
+    
     # Formats the log record with appropriate colors
     def format(self, record):
         # Get the original formatted message
         original_format = super().format(record)
-
         # Get color based on log level
         color = self.COLORS.get(record.levelname, Colors.RESET)
-
         # Apply color to the entire message
         colored_format = f"{color}{original_format}{Colors.RESET}"
-
         return colored_format
 
 # Configure logging with colors
 def setup_logging():
-    # Sets up a colored logger for the bot
     """Setup colored logging configuration"""
     logger = logging.getLogger("SAKURA 🌸")
-    logger.setLevel(logging.INFO)
-
+    logger.setLevel(logging.DEBUG)
+    
     # Remove existing handlers
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
-
+    
     # Create console handler
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.DEBUG)
-
+    
     # Create colored formatter with enhanced format
     formatter = ColoredFormatter(
         fmt='%(name)s - [%(levelname)s] - %(message)s'
     )
     console_handler.setFormatter(formatter)
-
+    
     # Add handler to logger
     logger.addHandler(console_handler)
-
     return logger
 
 logger = setup_logging()
