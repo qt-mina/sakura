@@ -64,14 +64,14 @@ async def get_response(
 
         # Send message and get response
         if image_bytes:
-            # Upload image file
-            uploaded_file = state.gemini_client.files.upload(
-                file=image_bytes,
+            # Create a Part object with inline data
+            image_part = genai.types.Part.from_bytes(
+                data=image_bytes,
                 mime_type="image/jpeg"
             )
             response = chat_session.send_message([
                 message_text or 'What do you see in this image?',
-                uploaded_file
+                image_part
             ])
         else:
             response = chat_session.send_message(message_text)
