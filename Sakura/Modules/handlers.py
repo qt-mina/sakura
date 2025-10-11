@@ -35,7 +35,8 @@ async def handle_messages(client: Client, message: Message) -> None:
         chat_type = message.chat.type.name.lower()
         log_action("DEBUG", f"📨 Processing message in {chat_type}", user_info)
 
-        await track_user(message, user_info)
+        # Start typing indicator immediately
+        asyncio.create_task(send_typing(client, message.chat.id, user_info))
 
         if user_id == OWNER_ID and user_id in state.broadcast_mode:
             log_action("INFO", f"📢 Executing broadcast to {state.broadcast_mode[user_id]}", user_info)
@@ -87,7 +88,6 @@ async def handle_messages(client: Client, message: Message) -> None:
         if await reply_poll(client, message, user_message, user_info):
             return
 
-        await send_typing(client, message.chat.id, user_info)
         ai_response = await get_response(user_message, user_id, user_info)
 
         await set_last_message(user_id, ai_response)
