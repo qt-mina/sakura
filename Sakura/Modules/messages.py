@@ -125,9 +125,9 @@ It will be automatically broadcasted to all groups.
 
 # Fallback responses for when API is unavailable or errors occur
 RESPONSES = [
-    "🙃"
+    "🙃🙃"
 ]
 
 ERROR = [
-    "🙃"
+    "🙃🙃"
 ]
