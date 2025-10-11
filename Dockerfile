@@ -1,20 +1,23 @@
-# Use Python 3.13 base
-FROM python:3.13
+# Use Python 3.13 slim image for smaller size
+FROM python:3.13-slim
 
 # Set working directory
 WORKDIR /app
 
-# Update and upgrade system
-RUN apt update && apt upgrade -y
+# Install system dependencies and upgrade pip
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    build-essential \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip install --no-cache-dir --upgrade pip
 
-# Upgrade pip to latest
-RUN pip install --upgrade pip
-
-# Copy Python dependencies
+# Copy only requirements first to leverage Docker cache
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install -r requirements.txt
+# Install Python dependencies with no cache to reduce image size
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY . .
