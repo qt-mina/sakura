@@ -57,7 +57,7 @@ async def get_response(
             model=AI_MODEL,
             config={
                 "system_instruction": f"{SAKURA_PROMPT}\nUser name: {user_name}",
-                "temperature": 2.0,
+                "temperature": 1.0,
             },
             history=formatted_history
         )
