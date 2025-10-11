@@ -21,7 +21,7 @@ async def generate_voice(text: str) -> bytes | None:
         return None
 
     try:
-        logger.info(f"Generating voice for text: '{text[:30]}...'")
+        logger.info(f"Generating voice for text: '{text}'")
         audio_stream = client.text_to_speech.convert(
             text=text,
             voice_id=VOICE_ID,

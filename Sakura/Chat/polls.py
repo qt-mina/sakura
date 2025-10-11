@@ -74,7 +74,7 @@ async def reply_poll(client: Client, message: Message, user_message: str, user_i
 async def analyze_poll(poll_question: str, poll_options: list, user_info: Dict[str, any], user_id: int) -> str:
     """Analyzes a poll using the unified chat AI."""
     if user_info:
-        log_action("DEBUG", f"📊 Analyzing poll: '{poll_question[:50]}...'", user_info)
+        log_action("DEBUG", f"📊 Analyzing poll: '{poll_question}'", user_info)
 
     try:
         options_text = "\n".join([f"{i + 1}. {option}" for i, option in enumerate(poll_options)])

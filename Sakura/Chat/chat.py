@@ -32,7 +32,7 @@ async def get_response(
     # Convert user_message to plain string if it's not already
     message_text = str(user_message) if user_message else ""
     
-    log_action("DEBUG", f"🤖 Getting AI response for '{message_text[:50]}...'", user_info)
+    log_action("DEBUG", f"🤖 Getting AI response for '{message_text}'", user_info)
 
     if not state.gemini_client:
         log_action("WARNING", "❌ Chat client not available, using fallback response", user_info)
@@ -80,7 +80,7 @@ async def get_response(
 
         # Update history with plain string
         await update_history(user_id, message_text, ai_response)
-        log_action("INFO", f"✅ AI response generated: '{ai_response[:50]}...'", user_info)
+        log_action("INFO", f"✅ AI response generated: '{ai_response}'", user_info)
 
         return ai_response
 
