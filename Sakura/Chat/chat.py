@@ -42,30 +42,36 @@ async def get_response(
         # Get chat history
         history = await get_history(user_id)
 
-        # Initialize chat session with system prompt
+        # Build history in the correct format for Gemini
+        formatted_history = []
+        if history:
+            for msg in history:
+                role = "user" if msg['role'] == 'user' else "model"
+                formatted_history.append({
+                    "role": role,
+                    "parts": [{"text": str(msg['content'])}]
+                })
+
+        # Initialize chat session with system prompt and history
         chat_session = state.gemini_client.chats.create(
             model=AI_MODEL,
             config={
                 "system_instruction": f"{SAKURA_PROMPT}\nUser name: {user_name}",
                 "temperature": 0.7,
-            }
+            },
+            history=formatted_history
         )
-
-        # Add previous conversation history to chat session
-        if history:
-            for msg in history:
-                role = "user" if msg['role'] == 'user' else "model"
-                chat_session.history.append({
-                    "role": role,
-                    "parts": [{"text": str(msg['content'])}]
-                })
 
         # Send message and get response
         if image_bytes:
-            image_data = base64.b64encode(image_bytes).decode('utf-8')
+            # Upload image file
+            uploaded_file = state.gemini_client.files.upload(
+                file=image_bytes,
+                mime_type="image/jpeg"
+            )
             response = chat_session.send_message([
                 message_text or 'What do you see in this image?',
-                genai.upload_file(data=base64.b64decode(image_data), mime_type="image/jpeg")
+                uploaded_file
             ])
         else:
             response = chat_session.send_message(message_text)
