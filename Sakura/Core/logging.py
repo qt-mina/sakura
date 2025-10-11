@@ -16,8 +16,8 @@ class ColoredFormatter(logging.Formatter):
     """Custom formatter to add colors to entire log messages"""
     # Color mapping for log levels
     COLORS = {
-        'DEBUG': Colors.GREEN,
-        'INFO': Colors.YELLOW,
+        'DEBUG': Colors.YELLOW,
+        'INFO': Colors.GREEN,
         'WARNING': Colors.BLUE,
         'ERROR': Colors.RED,
     }
@@ -28,8 +28,10 @@ class ColoredFormatter(logging.Formatter):
         original_format = super().format(record)
         # Get color based on log level
         color = self.COLORS.get(record.levelname, Colors.RESET)
-        # Apply color to the entire message
-        colored_format = f"{color}{original_format}{Colors.RESET}"
+        # Apply bold for INFO and DEBUG levels
+        bold = Colors.BOLD if record.levelname in ('INFO', 'DEBUG') else ''
+        # Apply color and bold to the entire message
+        colored_format = f"{bold}{color}{original_format}{Colors.RESET}"
         return colored_format
 
 # Configure logging with colors
