@@ -79,16 +79,12 @@ async def analyze_poll(poll_question: str, poll_options: list, user_info: Dict[s
     try:
         options_text = "\n".join([f"{i + 1}. {option}" for i, option in enumerate(poll_options)])
 
-        poll_prompt_message = f"""User has sent a poll or asked about a poll question. Analyze this question and suggest which option might be the correct answer.
-
-Poll Question: "{poll_question}"
+        poll_prompt_message = f"""Poll Question: "{poll_question}"
 
 Options:
 {options_text}
 
-Analyze this poll question and respond in Sakura's style about which option you think is correct and why. Keep it to one or two lines as per your character rules. Be helpful and give a quick reason.
-
-Sakura's response:"""
+Which option do you think is correct and why?"""
 
         response = await get_response(
             user_message=poll_prompt_message,
