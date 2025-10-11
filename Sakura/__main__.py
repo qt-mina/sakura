@@ -58,11 +58,17 @@ async def post_shutdown(app: Client):
 async def sakura() -> None:
     """Main function to initialize and run the bot"""
     logger.info("🌸 Sakura Bot is starting up...")
-    
+
     # Verify uvloop is active
     loop = asyncio.get_event_loop()
-    logger.info(f"📊 Event loop type: {type(loop).__name__}")
+    loop_type = type(loop).__module__ + "." + type(loop).__name__
+    logger.info(f"📊 Event loop type: {loop_type}")
     
+    if "uvloop" in loop_type.lower():
+        logger.info("✅ uvloop is ACTIVE")
+    else:
+        logger.warning(f"⚠️ uvloop is NOT active! Using: {loop_type}")
+
     if not validate_config():
         return
 
@@ -106,15 +112,27 @@ async def sakura() -> None:
 
 if __name__ == "__main__":
     logger.info("🌸 Sakura is getting ready...")
-    
+
+    # Setup uvloop BEFORE any asyncio operations
+    uvloop_installed = False
     try:
-        uvloop.install()
-        logger.info("⚡ Sakura using uvloop jutsu")
+        import uvloop
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+        logger.info("⚡ uvloop event loop policy SET successfully")
+        uvloop_installed = True
     except ImportError:
-        logger.warning("💫 Sakura using default loop jutsu")
+        logger.warning("💫 uvloop not installed, using default asyncio event loop")
     except Exception as e:
-        logger.warning(f"😭 Sakura uvloop jutsu failed: {e}")
+        logger.warning(f"😭 Failed to set uvloop policy: {e}")
     
+    # Verify the policy was set
+    policy = asyncio.get_event_loop_policy()
+    policy_type = type(policy).__module__ + "." + type(policy).__name__
+    logger.info(f"📋 Event loop policy: {policy_type}")
+    
+    if uvloop_installed and "uvloop" not in policy_type.lower():
+        logger.error("❌ uvloop policy set but not reflected! Something went wrong.")
+
     try:
         asyncio.run(sakura())
     except KeyboardInterrupt:
