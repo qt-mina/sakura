@@ -58,16 +58,13 @@ async def post_shutdown(app: Client):
 async def sakura() -> None:
     """Main function to initialize and run the bot"""
     logger.info("🌸 Sakura Bot is starting up...")
+    
+    # Verify uvloop is active
+    loop = asyncio.get_event_loop()
+    logger.info(f"📊 Event loop type: {type(loop).__name__}")
+    
     if not validate_config():
         return
-
-    try:
-        uvloop.install()
-        logger.info("🚀 uvloop installed successfully")
-    except ImportError:
-        logger.warning("⚠️ uvloop not available")
-    except Exception as e:
-        logger.warning(f"⚠️ uvloop setup failed: {e}")
 
     logger.info("🚀 Initializing clients...")
     start_server_thread()
@@ -108,6 +105,15 @@ async def sakura() -> None:
 
 
 if __name__ == "__main__":
+    # Install uvloop BEFORE creating the event loop
+    try:
+        uvloop.install()
+        logger.info("🚀 uvloop installed successfully")
+    except ImportError:
+        logger.warning("⚠️ uvloop not available - using default asyncio event loop")
+    except Exception as e:
+        logger.warning(f"⚠️ uvloop setup failed: {e} - using default asyncio event loop")
+    
     try:
         asyncio.run(sakura())
     except KeyboardInterrupt:
