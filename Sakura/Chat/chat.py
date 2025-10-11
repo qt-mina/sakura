@@ -1,8 +1,6 @@
 import base64
 from typing import Optional, Dict
-
 from google import genai
-
 from Sakura.Core.config import GEMINI_API_KEY, AI_MODEL
 from Sakura.Core.logging import logger
 from Sakura.Core.helpers import log_action, get_fallback, get_error
@@ -15,7 +13,6 @@ def init_client():
     if not GEMINI_API_KEY:
         logger.warning("⚠️ No Gemini API key found, chat functionality will be disabled.")
         return
-
     logger.info("🫡 Initializing Google GenAI API key.")
     try:
         state.gemini_client = genai.Client(api_key=GEMINI_API_KEY)
@@ -29,42 +26,56 @@ async def get_response(
     user_info: Dict[str, any],
     image_bytes: Optional[bytes] = None
 ) -> str:
-    """Get response from Gemini API."""
+    """Get response from Gemini API using ChatSession."""
     user_name = user_info.get("first_name", "User")
     log_action("DEBUG", f"🤖 Getting AI response for '{user_message[:50]}...'", user_info)
-
+    
     if not state.gemini_client:
         log_action("WARNING", "❌ Chat client not available, using fallback response", user_info)
         return get_fallback()
-
+    
     try:
+        # Get chat history
         history = await get_history(user_id)
-        context = ""
-        if history:
-            history_text = [f"{'User' if msg['role'] == 'user' else 'Sakura'}: {msg['content']}" for msg in history]
-            context = f"\n\nPrevious conversation:\n" + "\n".join(history_text)
-
-        final_contents = []
-        if image_bytes:
-            prompt = f"{SAKURA_PROMPT}\n\nUser name: {user_name}{context}\n\nUser sent an image. Caption: '{user_message or 'No caption'}'\n\nDescribe what you see:\n\nSakura's response:"
-            image_data = base64.b64encode(image_bytes).decode('utf-8')
-            final_contents.extend([prompt, {"inline_data": {"mime_type": "image/jpeg", "data": image_data}}])
-        else:
-            prompt = f"{SAKURA_PROMPT}\n\nUser name: {user_name}{context}\nCurrent message: {user_message}\n\nSakura's response:"
-            final_contents.append(prompt)
-
-        response = await state.gemini_client.aio.models.generate_content(
+        
+        # Initialize chat session with system prompt
+        chat_session = state.gemini_client.chats.create(
             model=AI_MODEL,
-            contents=final_contents
+            config={
+                "system_instruction": f"{SAKURA_PROMPT}\nUser name: {user_name}",
+                "temperature": 0.7,
+            }
         )
-
+        
+        # Add previous conversation history to chat session
+        if history:
+            for msg in history:
+                role = "user" if msg['role'] == 'user' else "model"
+                chat_session.history.append({
+                    "role": role,
+                    "parts": [{"text": msg['content']}]
+                })
+        
+        # Prepare current message with optional image
+        if image_bytes:
+            image_data = base64.b64encode(image_bytes).decode('utf-8')
+            message_parts = [
+                {"text": f"{user_message or 'What do you see in this image?'}"},
+                {"inline_data": {"mime_type": "image/jpeg", "data": image_data}}
+            ]
+        else:
+            message_parts = [{"text": user_message}]
+        
+        # Send message and get response
+        response = chat_session.send_message(message_parts)
         ai_response = response.text.strip() if response.text else get_fallback()
-
+        
+        # Update history
         await update_history(user_id, user_message, ai_response)
-
         log_action("INFO", f"✅ AI response generated: '{ai_response[:50]}...'", user_info)
+        
         return ai_response
-
+        
     except Exception as e:
         error_message = f"❌ AI API error: {e}"
         log_action("ERROR", error_message, user_info)
