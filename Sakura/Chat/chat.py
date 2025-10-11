@@ -28,16 +28,20 @@ async def get_response(
 ) -> str:
     """Get response from Gemini API using ChatSession."""
     user_name = user_info.get("first_name", "User")
-    log_action("DEBUG", f"🤖 Getting AI response for '{user_message[:50]}...'", user_info)
     
+    # Convert user_message to plain string if it's not already
+    message_text = str(user_message) if user_message else ""
+    
+    log_action("DEBUG", f"🤖 Getting AI response for '{message_text[:50]}...'", user_info)
+
     if not state.gemini_client:
         log_action("WARNING", "❌ Chat client not available, using fallback response", user_info)
         return get_fallback()
-    
+
     try:
         # Get chat history
         history = await get_history(user_id)
-        
+
         # Initialize chat session with system prompt
         chat_session = state.gemini_client.chats.create(
             model=AI_MODEL,
@@ -46,33 +50,34 @@ async def get_response(
                 "temperature": 0.7,
             }
         )
-        
+
         # Add previous conversation history to chat session
         if history:
             for msg in history:
                 role = "user" if msg['role'] == 'user' else "model"
                 chat_session.history.append({
                     "role": role,
-                    "parts": [{"text": msg['content']}]
+                    "parts": [{"text": str(msg['content'])}]
                 })
-        
+
         # Send message and get response
         if image_bytes:
             image_data = base64.b64encode(image_bytes).decode('utf-8')
             response = chat_session.send_message([
-                user_message or 'What do you see in this image?',
+                message_text or 'What do you see in this image?',
                 genai.upload_file(data=base64.b64decode(image_data), mime_type="image/jpeg")
             ])
         else:
-            response = chat_session.send_message(user_message)
+            response = chat_session.send_message(message_text)
+        
         ai_response = response.text.strip() if response.text else get_fallback()
-        
-        # Update history
-        await update_history(user_id, user_message, ai_response)
+
+        # Update history with plain string
+        await update_history(user_id, message_text, ai_response)
         log_action("INFO", f"✅ AI response generated: '{ai_response[:50]}...'", user_info)
-        
+
         return ai_response
-        
+
     except Exception as e:
         error_message = f"❌ AI API error: {e}"
         log_action("ERROR", error_message, user_info)
