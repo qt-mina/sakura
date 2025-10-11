@@ -28,11 +28,11 @@ async def get_response(
 ) -> str:
     """Get response from Gemini API using ChatSession."""
     user_name = user_info.get("first_name", "User")
-    
+
     # Convert user_message to plain string if it's not already
     message_text = str(user_message) if user_message else ""
-    
-    log_action("DEBUG", f"🤖 Getting AI response for '{message_text}'", user_info)
+
+    log_action("DEBUG", f"🤖 Getting AI response for '{message_text[:50]}...'", user_info)
 
     if not state.gemini_client:
         log_action("WARNING", "❌ Chat client not available, using fallback response", user_info)
@@ -58,6 +58,7 @@ async def get_response(
             config={
                 "system_instruction": f"{SAKURA_PROMPT}\nUser name: {user_name}",
                 "temperature": 1.0,
+                "max_output_tokens": 200,        # Limit response length
             },
             history=formatted_history
         )
@@ -75,12 +76,12 @@ async def get_response(
             ])
         else:
             response = chat_session.send_message(message_text)
-        
+
         ai_response = response.text.strip() if response.text else get_fallback()
 
         # Update history with plain string
         await update_history(user_id, message_text, ai_response)
-        log_action("INFO", f"✅ AI response generated: '{ai_response}'", user_info)
+        log_action("INFO", f"✅ AI response generated: '{ai_response[:50]}...'", user_info)
 
         return ai_response
 
