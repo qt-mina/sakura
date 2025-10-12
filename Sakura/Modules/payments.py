@@ -5,7 +5,7 @@ import orjson
 from pyrogram import Client, filters
 from pyrogram.types import Message, LabeledPrice, InlineKeyboardButton, InlineKeyboardMarkup, PreCheckoutQuery, LinkPreviewOptions
 from pyrogram.enums import ParseMode, ChatType
-from Sakura.Core.config import BOT_TOKEN
+from Sakura.Core.config import BOT_TOKEN, COMMAND_PREFIXES
 from Sakura.Core.helpers import fetch_user, log_action, get_error
 from Sakura.Core.logging import logger
 from Sakura.Services.tracking import track_user
@@ -17,7 +17,7 @@ from Sakura.Database.database import save_purchase, get_purchases
 from Sakura.Database.constants import PAYMENT_STICKERS
 from Sakura import state
 
-@Client.on_message(filters.command("meow"))
+@Client.on_message(filters.command("meow", prefixes=COMMAND_PREFIXES))
 async def meow_command_handler(client: Client, message: Message) -> None:
     """Send an invoice for sakura flowers."""
     try:
@@ -55,7 +55,7 @@ async def meow_command_handler(client: Client, message: Message) -> None:
         log_action("ERROR", f"❌ Error sending invoice: {e}", user_info)
         await message.reply_text("❌ Oops! Something went wrong creating the invoice. Try again later! 🔧")
 
-@Client.on_message(filters.command("fams"))
+@Client.on_message(filters.command("fams", prefixes=COMMAND_PREFIXES))
 async def fams_command_handler(client: Client, message: Message) -> None:
     """Show all flower buyers with their donation amounts."""
     try:
