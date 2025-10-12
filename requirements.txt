@@ -1,3 +1,4 @@
+# All dependencies
 psutil
 uvloop
 valkey
@@ -8,5 +9,3 @@ kurigram
 elevenlabs
 google-genai
 aiohttp[speedups]
-
-#
