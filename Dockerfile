@@ -1,4 +1,4 @@
-# Use Python 3.13 slim image for smaller size
+# Use Python slim image for smaller size
 FROM python:slim
 
 # Set working directory
