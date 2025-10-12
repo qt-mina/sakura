@@ -63,7 +63,7 @@ async def get_response(
             config={
                 "system_instruction": f"{SAKURA_PROMPT}\nUser name: {user_name}",
                 "temperature": 1.0,
-                "max_output_tokens": 200,        # Limit response length
+                "max_output_tokens": 500,        # Increased limit for response (was 200)
             },
             history=formatted_history
         )
@@ -81,22 +81,34 @@ async def get_response(
             ])
         else:
             response = chat_session.send_message(message_text)
-
-        # Debug: Log the full response object
-        log_action("DEBUG", f"🔍 API Response object: {response}", user_info)
-        log_action("DEBUG", f"🔍 Response text: '{response.text}' (type: {type(response.text)})", user_info)
         
         ai_response = response.text.strip() if response.text else None
 
         if not ai_response:
-            log_action("WARNING", f"⚠️ AI returned empty response. Raw response: {response}", user_info)
-            # Check if there's a safety block or other reason
-            if hasattr(response, 'prompt_feedback'):
-                log_action("WARNING", f"⚠️ Prompt feedback: {response.prompt_feedback}", user_info)
+            # Check why the response is empty and log cleanly
+            finish_reason = None
+            usage_info = ""
+            
             if hasattr(response, 'candidates') and response.candidates:
-                log_action("WARNING", f"⚠️ Candidates: {response.candidates}", user_info)
-                for i, candidate in enumerate(response.candidates):
-                    log_action("WARNING", f"⚠️ Candidate {i}: finish_reason={getattr(candidate, 'finish_reason', 'N/A')}, safety_ratings={getattr(candidate, 'safety_ratings', 'N/A')}", user_info)
+                finish_reason = str(getattr(response.candidates[0], 'finish_reason', ''))
+            
+            if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                metadata = response.usage_metadata
+                prompt_tokens = getattr(metadata, 'prompt_token_count', 0)
+                thought_tokens = getattr(metadata, 'thoughts_token_count', 0)
+                total_tokens = getattr(metadata, 'total_token_count', 0)
+                usage_info = f" [Tokens: {prompt_tokens} prompt + {thought_tokens} thoughts = {total_tokens} total]"
+            
+            # Clean, readable logs based on finish reason
+            if 'MAX_TOKENS' in finish_reason:
+                log_action("WARNING", f"⚠️ AI response truncated (hit token limit){usage_info}", user_info)
+            elif 'SAFETY' in finish_reason:
+                log_action("WARNING", "⚠️ AI response blocked by safety filters", user_info)
+            elif 'RECITATION' in finish_reason:
+                log_action("WARNING", "⚠️ AI response blocked (detected copyrighted content)", user_info)
+            else:
+                log_action("WARNING", f"⚠️ AI returned empty response (reason: {finish_reason or 'unknown'})", user_info)
+            
             return None
 
         # Update history with plain string
@@ -106,8 +118,23 @@ async def get_response(
         return ai_response
 
     except Exception as e:
-        import traceback
-        error_details = traceback.format_exc()
-        error_message = f"❌ AI API error: {e}\n{error_details}"
-        log_action("ERROR", error_message, user_info)
+        # Extract just the error type and message, not the full traceback
+        error_type = type(e).__name__
+        error_msg = str(e)
+        
+        # Clean up common Gemini API errors for better readability
+        if "429" in error_msg or "quota" in error_msg.lower():
+            log_action("ERROR", f"❌ AI API rate limit exceeded (quota exhausted)", user_info)
+        elif "401" in error_msg or "api key" in error_msg.lower():
+            log_action("ERROR", f"❌ AI API authentication failed (invalid API key)", user_info)
+        elif "404" in error_msg or "not found" in error_msg.lower():
+            log_action("ERROR", f"❌ AI model not found ({AI_MODEL})", user_info)
+        elif "timeout" in error_msg.lower():
+            log_action("ERROR", f"❌ AI API request timed out", user_info)
+        elif "connection" in error_msg.lower():
+            log_action("ERROR", f"❌ AI API connection failed", user_info)
+        else:
+            # For unexpected errors, show type and brief message
+            log_action("ERROR", f"❌ AI API error: {error_type} - {error_msg[:100]}", user_info)
+        
         return None
