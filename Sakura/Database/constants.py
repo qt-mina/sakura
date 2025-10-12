@@ -1,3 +1,4 @@
+# Sakura/Database/constants.py
 # EMOJI REACTIONS AND STICKERS
 EMOJI_REACT = [
     "🍓",  "💊",  "🦄",  "💅",  "💘",

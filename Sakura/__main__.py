@@ -1,3 +1,4 @@
+# Sakura/__main__.py
 import asyncio
 import uvloop
 from pyrogram import Client
