@@ -82,10 +82,21 @@ async def get_response(
         else:
             response = chat_session.send_message(message_text)
 
+        # Debug: Log the full response object
+        log_action("DEBUG", f"🔍 API Response object: {response}", user_info)
+        log_action("DEBUG", f"🔍 Response text: '{response.text}' (type: {type(response.text)})", user_info)
+        
         ai_response = response.text.strip() if response.text else None
 
         if not ai_response:
-            log_action("WARNING", "⚠️ AI returned empty response", user_info)
+            log_action("WARNING", f"⚠️ AI returned empty response. Raw response: {response}", user_info)
+            # Check if there's a safety block or other reason
+            if hasattr(response, 'prompt_feedback'):
+                log_action("WARNING", f"⚠️ Prompt feedback: {response.prompt_feedback}", user_info)
+            if hasattr(response, 'candidates') and response.candidates:
+                log_action("WARNING", f"⚠️ Candidates: {response.candidates}", user_info)
+                for i, candidate in enumerate(response.candidates):
+                    log_action("WARNING", f"⚠️ Candidate {i}: finish_reason={getattr(candidate, 'finish_reason', 'N/A')}, safety_ratings={getattr(candidate, 'safety_ratings', 'N/A')}", user_info)
             return None
 
         # Update history with plain string
