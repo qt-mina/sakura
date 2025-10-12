@@ -10,7 +10,7 @@ from Sakura.Modules.effects import animate_reaction, add_reaction, photo_effect
 from Sakura.Modules.typing import sticker_action, photo_action
 from Sakura.Database.constants import START_STICKERS, SAKURA_IMAGES
 from Sakura.Modules.keyboards import start_menu, help_menu
-from Sakura.Core.config import PING_LINK, OWNER_ID
+from Sakura.Core.config import PING_LINK, OWNER_ID, COMMAND_PREFIXES
 from Sakura.Database.database import get_users, get_groups
 from Sakura.Modules.messages import (
     START_MESSAGES,
@@ -25,7 +25,7 @@ COMMANDS = [
     BotCommand("help", "💬 A short guide")
 ]
 
-@Client.on_message(filters.command("start"))
+@Client.on_message(filters.command("start", prefixes=COMMAND_PREFIXES))
 async def start_command_handler(client: Client, message: Message) -> None:
     """Handle /start command"""
     try:
@@ -72,7 +72,7 @@ async def start_command_handler(client: Client, message: Message) -> None:
         log_action("ERROR", f"❌ Error in start command: {e}", user_info)
         await message.reply_text(get_error())
 
-@Client.on_message(filters.command("help"))
+@Client.on_message(filters.command("help", prefixes=COMMAND_PREFIXES))
 async def help_command_handler(client: Client, message: Message) -> None:
     """Handle /help command"""
     try:
@@ -113,7 +113,7 @@ async def help_command_handler(client: Client, message: Message) -> None:
         log_action("ERROR", f"❌ Error in help command: {e}", user_info)
         await message.reply_text(get_error())
 
-@Client.on_message(filters.command("broadcast") & filters.user(OWNER_ID))
+@Client.on_message(filters.command("broadcast", prefixes=COMMAND_PREFIXES) & filters.user(OWNER_ID))
 async def broadcast_command_handler(client: Client, message: Message) -> None:
     """Handle broadcast command (owner only)"""
     user_info = fetch_user(message)
@@ -132,7 +132,7 @@ async def broadcast_command_handler(client: Client, message: Message) -> None:
     await message.reply_text(text, reply_markup=keyboard, parse_mode=ParseMode.HTML)
     log_action("INFO", "✅ Broadcast selection menu sent", user_info)
 
-@Client.on_message(filters.command("ping"))
+@Client.on_message(filters.command("ping", prefixes=COMMAND_PREFIXES))
 async def ping_command_handler(client: Client, message: Message) -> None:
     """Handle ping command"""
     user_info = fetch_user(message)
@@ -147,7 +147,7 @@ async def ping_command_handler(client: Client, message: Message) -> None:
     )
     log_action("INFO", "✅ Ping completed", user_info)
 
-@Client.on_message(filters.command("stats") & filters.user(OWNER_ID))
+@Client.on_message(filters.command("stats", prefixes=COMMAND_PREFIXES) & filters.user(OWNER_ID))
 async def stats_command_handler(client: Client, message: Message) -> None:
     """Hidden owner command to show bot statistics"""
     try:
