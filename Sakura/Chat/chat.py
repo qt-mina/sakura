@@ -63,8 +63,8 @@ async def get_response(
             model=AI_MODEL,
             config={
                 "system_instruction": f"{SAKURA_PROMPT}\nUser name: {user_name}",
-                "temperature": 1.0,
-                "max_output_tokens": 1500,        # Increased limit for response (was 200)
+                "temperature": 0.7,
+                "max_output_tokens": 1500,
             },
             history=formatted_history
         )
