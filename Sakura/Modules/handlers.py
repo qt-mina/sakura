@@ -88,18 +88,32 @@ async def handle_messages(client: Client, message: Message) -> None:
         if await reply_poll(client, message, user_message, user_info):
             return
 
+        # Get AI response
         ai_response = await get_response(user_message, user_id, user_info)
 
-        await set_last_message(user_id, ai_response)
+        # Validate response before proceeding
+        if not ai_response or not isinstance(ai_response, str):
+            log_action("ERROR", f"❌ Invalid AI response received: {ai_response}", user_info)
+            await message.reply_text(get_error())
+            return
+
+        # Cache the valid response (wrapped in try-except to prevent cache failures from blocking responses)
+        try:
+            await set_last_message(user_id, ai_response)
+        except Exception as cache_error:
+            log_action("WARNING", f"⚠️ Failed to cache message: {cache_error}", user_info)
+            # Continue anyway - caching failure shouldn't prevent response
 
         log_action("DEBUG", f"📤 Sending response: '{ai_response}'", user_info)
 
+        # Try to send as voice (10% chance)
         voice_data = None
         if random.random() < 0.1:  # 10% chance
             log_action("INFO", "🎤 Attempting to send response as voice (10% chance)", user_info)
             await client.send_chat_action(chat_id=message.chat.id, action=ChatAction.RECORD_AUDIO)
             voice_data = await generate_voice(ai_response)
 
+        # Send response (voice or text)
         if voice_data:
             await message.reply_voice(voice=voice_data)
             log_action("INFO", "✅ Voice message response sent successfully", user_info)
@@ -113,5 +127,7 @@ async def handle_messages(client: Client, message: Message) -> None:
     except Exception as e:
         user_info = fetch_user(message)
         log_action("ERROR", f"❌ Error handling message: {e}", user_info)
-        if message.text:
+        try:
             await message.reply_text(get_error())
+        except Exception as reply_error:
+            log_action("ERROR", f"❌ Failed to send error message: {reply_error}", user_info)
