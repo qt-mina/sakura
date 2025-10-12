@@ -94,10 +94,10 @@ async def get_response(
 
             if hasattr(response, 'usage_metadata') and response.usage_metadata:
                 metadata = response.usage_metadata
-                prompt_tokens = getattr(metadata, 'prompt_token_count', 0)
-                candidate_tokens = getattr(metadata, 'candidates_token_count', 0)
-                thought_tokens = getattr(metadata, 'thoughts_token_count', 0)
-                total_tokens = getattr(metadata, 'total_token_count', 0)
+                prompt_tokens = getattr(metadata, 'prompt_token_count', 0) or 0
+                candidate_tokens = getattr(metadata, 'candidates_token_count', 0) or 0
+                thought_tokens = getattr(metadata, 'thoughts_token_count', 0) or 0
+                total_tokens = getattr(metadata, 'total_token_count', 0) or 0
                 usage_info = f" [Tokens: {prompt_tokens} input + {candidate_tokens} output + {thought_tokens} thoughts = {total_tokens} total]"
 
             # Clean, readable logs based on finish reason
@@ -115,10 +115,10 @@ async def get_response(
         # Log token usage for successful responses
         if hasattr(response, 'usage_metadata') and response.usage_metadata:
             metadata = response.usage_metadata
-            prompt_tokens = getattr(metadata, 'prompt_token_count', 0)
-            candidate_tokens = getattr(metadata, 'candidates_token_count', 0)
-            thought_tokens = getattr(metadata, 'thoughts_token_count', 0)
-            total_tokens = getattr(metadata, 'total_token_count', 0)
+            prompt_tokens = getattr(metadata, 'prompt_token_count', 0) or 0
+            candidate_tokens = getattr(metadata, 'candidates_token_count', 0) or 0
+            thought_tokens = getattr(metadata, 'thoughts_token_count', 0) or 0
+            total_tokens = getattr(metadata, 'total_token_count', 0) or 0
             
             token_info = f" [Tokens: {prompt_tokens} input + {candidate_tokens} output"
             if thought_tokens > 0:
