@@ -25,7 +25,7 @@ async def get_response(
     user_id: int,
     user_info: Dict[str, any],
     image_bytes: Optional[bytes] = None
-) -> str:
+) -> Optional[str]:
     """Get response from Gemini API using ChatSession."""
     user_name = user_info.get("first_name", "User")
 
@@ -36,7 +36,7 @@ async def get_response(
 
     if not state.gemini_client:
         log_action("WARNING", "❌ Chat client not available, using fallback response", user_info)
-        return get_fallback()
+        return None
 
     try:
         # Get chat history
@@ -77,7 +77,11 @@ async def get_response(
         else:
             response = chat_session.send_message(message_text)
 
-        ai_response = response.text.strip() if response.text else get_fallback()
+        ai_response = response.text.strip() if response.text else None
+
+        if not ai_response:
+            log_action("WARNING", "⚠️ AI returned empty response", user_info)
+            return None
 
         # Update history with plain string
         await update_history(user_id, message_text, ai_response)
@@ -88,4 +92,4 @@ async def get_response(
     except Exception as e:
         error_message = f"❌ AI API error: {e}"
         log_action("ERROR", error_message, user_info)
-        return get_error()
+        return None
