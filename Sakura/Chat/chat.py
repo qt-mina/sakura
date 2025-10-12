@@ -81,39 +81,56 @@ async def get_response(
             ])
         else:
             response = chat_session.send_message(message_text)
-        
+
         ai_response = response.text.strip() if response.text else None
 
         if not ai_response:
             # Check why the response is empty and log cleanly
             finish_reason = None
             usage_info = ""
-            
+
             if hasattr(response, 'candidates') and response.candidates:
                 finish_reason = str(getattr(response.candidates[0], 'finish_reason', ''))
-            
+
             if hasattr(response, 'usage_metadata') and response.usage_metadata:
                 metadata = response.usage_metadata
                 prompt_tokens = getattr(metadata, 'prompt_token_count', 0)
+                candidate_tokens = getattr(metadata, 'candidates_token_count', 0)
                 thought_tokens = getattr(metadata, 'thoughts_token_count', 0)
                 total_tokens = getattr(metadata, 'total_token_count', 0)
-                usage_info = f" [Tokens: {prompt_tokens} prompt + {thought_tokens} thoughts = {total_tokens} total]"
-            
+                usage_info = f" [Tokens: {prompt_tokens} input + {candidate_tokens} output + {thought_tokens} thoughts = {total_tokens} total]"
+
             # Clean, readable logs based on finish reason
             if 'MAX_TOKENS' in finish_reason:
                 log_action("WARNING", f"⚠️ AI response truncated (hit token limit){usage_info}", user_info)
             elif 'SAFETY' in finish_reason:
-                log_action("WARNING", "⚠️ AI response blocked by safety filters", user_info)
+                log_action("WARNING", f"⚠️ AI response blocked by safety filters{usage_info}", user_info)
             elif 'RECITATION' in finish_reason:
-                log_action("WARNING", "⚠️ AI response blocked (detected copyrighted content)", user_info)
+                log_action("WARNING", f"⚠️ AI response blocked (detected copyrighted content){usage_info}", user_info)
             else:
-                log_action("WARNING", f"⚠️ AI returned empty response (reason: {finish_reason or 'unknown'})", user_info)
-            
+                log_action("WARNING", f"⚠️ AI returned empty response (reason: {finish_reason or 'unknown'}){usage_info}", user_info)
+
             return None
+
+        # Log token usage for successful responses
+        if hasattr(response, 'usage_metadata') and response.usage_metadata:
+            metadata = response.usage_metadata
+            prompt_tokens = getattr(metadata, 'prompt_token_count', 0)
+            candidate_tokens = getattr(metadata, 'candidates_token_count', 0)
+            thought_tokens = getattr(metadata, 'thoughts_token_count', 0)
+            total_tokens = getattr(metadata, 'total_token_count', 0)
+            
+            token_info = f" [Tokens: {prompt_tokens} input + {candidate_tokens} output"
+            if thought_tokens > 0:
+                token_info += f" + {thought_tokens} thoughts"
+            token_info += f" = {total_tokens} total]"
+            
+            log_action("INFO", f"✅ AI response generated: '{ai_response}'{token_info}", user_info)
+        else:
+            log_action("INFO", f"✅ AI response generated: '{ai_response}'", user_info)
 
         # Update history with plain string
         await update_history(user_id, message_text, ai_response)
-        log_action("INFO", f"✅ AI response generated: '{ai_response}'", user_info)
 
         return ai_response
 
@@ -121,7 +138,7 @@ async def get_response(
         # Extract just the error type and message, not the full traceback
         error_type = type(e).__name__
         error_msg = str(e)
-        
+
         # Clean up common Gemini API errors for better readability
         if "429" in error_msg or "quota" in error_msg.lower():
             log_action("ERROR", f"❌ AI API rate limit exceeded (quota exhausted)", user_info)
@@ -136,5 +153,5 @@ async def get_response(
         else:
             # For unexpected errors, show type and brief message
             log_action("ERROR", f"❌ AI API error: {error_type} - {error_msg[:100]}", user_info)
-        
+
         return None
