@@ -1,3 +1,4 @@
+# Sakura/Modules/typing.py
 from pyrogram import Client
 from pyrogram.enums import ChatAction
 from Sakura.Core.helpers import log_action

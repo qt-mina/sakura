@@ -1,3 +1,4 @@
+# Sakura/Core/config.py
 import os
 
 # CONFIGURATION

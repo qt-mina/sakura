@@ -1,3 +1,4 @@
+# Sakura/Core/errors.py
 from pyrogram import Client
 from Sakura.Core.logging import logger
 
