@@ -4,25 +4,25 @@ This directory contains GitHub Actions workflows for automating Sakura bot opera
 
 ## 📋 Available Workflows
 
-### `redeploy.yml` - Auto Redeploy Every 6 Hours
+### `health-check.yml` - Bot Health Check & Auto-Redeploy
 
-Automatically triggers a full redeploy of the bot on Render every 6 hours.
+Automatically monitors the bot's health and redeploys if it goes down.
 
 **Purpose:**
-- Prevents memory leaks
-- Ensures fresh bot instance
-- Maintains optimal performance
-- Clears cached data
+- Detects bot crashes immediately
+- Automatically redeploys on Render when bot is down
+- Ensures 24/7 uptime with minimal downtime
+- Silent health checks (no chat messages)
 
 **Schedule:**
-- Runs every 6 hours (4 times daily)
-- UTC times: 00:00, 06:00, 12:00, 18:00
-- Bangladesh (GMT+6): 6 AM, 12 PM, 6 PM, 12 AM
+- Runs every 1 minute continuously
+- Checks if bot is responsive via Telegram API
+- Triggers redeploy only when bot is detected as down
 
 **Manual Trigger:**
 You can manually trigger this workflow:
 1. Go to Actions tab
-2. Select "Auto Redeploy Every 6 Hours"
+2. Select "Bot Health Check & Auto-Redeploy"
 3. Click "Run workflow"
 4. Click the green "Run workflow" button
 
@@ -30,39 +30,51 @@ You can manually trigger this workflow:
 
 ### Required Secrets
 
+- **BOT_TOKEN**: Your Telegram bot token
+  - Format: `123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11`
+  - Get from: [@BotFather](https://t.me/botfather) on Telegram
+
+- **CHAT_ID**: Chat ID for health check messages
+  - Format: A number (e.g., `987654321`)
+  - Can be your personal chat ID or a test group
+  - Get from: Send a message to your bot and check the update
+
 - **REDEPLOY**: Render deploy hook URL
   - Get from: Render Dashboard → Service → Settings → Deploy Hook
   - Format: `https://api.render.com/deploy/srv-xxxxx?key=yyyyy`
 
-### Modifying Schedule
+### Modifying Check Frequency
 
-To change the deployment frequency, edit the `cron` value in `redeploy.yml`:
+To change how often the bot is checked, edit the `cron` value in `redeploy.yml`:
 
 ```yaml
-# Every 6 hours (current)
-cron: '0 */6 * * *'
+# Every 1 minute (current)
+cron: '* * * * *'
 
-# Every 12 hours
-cron: '0 */12 * * *'
+# Every 5 minutes
+cron: '*/5 * * * *'
 
-# Every 3 hours
-cron: '0 */3 * * *'
+# Every 10 minutes
+cron: '*/10 * * * *'
 
-# Once daily at 6 AM Bangladesh time
-cron: '0 0 * * *'
-
-# Custom times (e.g., 6 AM and 6 PM only)
-cron: '0 0,12 * * *'
+# Every 30 minutes
+cron: '*/30 * * * *'
 ```
 
 ## 📊 Monitoring
 
 ### Check Workflow Status
 1. Go to the **Actions** tab in your repository
-2. Click on "Auto Redeploy Every 6 Hours"
+2. Click on "Bot Health Check & Auto-Redeploy"
 3. View recent runs and their status
+4. Click on a run to see detailed logs
 
-### Verify Render Deployments
+### Verify Bot Health
+1. Open your bot's chat
+2. Send a test command to verify it's responding
+3. Check workflow runs - if no recent redeployments, bot is healthy
+
+### Monitor Render Deployments
 1. Open Render Dashboard
 2. Go to your service
 3. Check the **Events** or **Logs** tab
@@ -72,21 +84,29 @@ cron: '0 0,12 * * *'
 
 ### Workflow Not Running
 - Check if Actions are enabled in repository settings
-- Verify the cron syntax is correct
-- Ensure the workflow file is in the correct path
+- Verify the workflow file exists in `.github/workflows/redeploy.yml`
+- Ensure the workflow has proper YAML formatting
 
-### Deployment Failing
-- Verify the `REDEPLOY` secret contains the correct URL
-- Check Render service status
-- Review workflow logs in Actions tab
+### Frequent Redeployments
+- Your bot may be crashing repeatedly
+- Check Render logs for errors
+- Verify bot code for memory leaks or infinite loops
+- Consider increasing check interval (e.g., every 5 minutes instead of 1)
 
-### Wrong Timing
-- Remember: cron uses UTC time
-- Convert your local time to UTC
-- Bangladesh (GMT+6) = UTC + 6 hours
+### Wrong Chat ID
+- Health check will fail if CHAT_ID is invalid
+- Get correct chat ID: send any message to your bot, check the update
+- Test by sending a message to your bot manually
+
+### Redeploy Not Triggering
+- Verify the `REDEPLOY` secret contains the correct Render deploy hook URL
+- Check if Render service is still active
+- Review workflow logs in Actions tab for error messages
 
 ## 📝 Notes
 
 - GitHub Actions cron jobs may have a 3-15 minute delay during high traffic
+- Health checks are silent - no visible messages in your chat
 - The workflow runs on GitHub servers, independent of your bot's status
-- Even if Render shuts down your free instance, the workflow will wake it up and redeploy
+- Even if Render shuts down your free instance, the workflow will detect it and redeploy
+- First health check after bot startup may fail (allow 10-30 seconds for bot to initialize)
