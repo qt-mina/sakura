@@ -1,14 +1,29 @@
-name: Auto Redeploy Every 6 Hours
+name: Bot Health Check & Auto-Redeploy
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Runs every 6 hours (00:00, 06:00, 12:00, 18:00 UTC)
-  workflow_dispatch:  # Allows manual trigger
+    - cron: '* * * * *'  # Runs every 1 minute
+  workflow_dispatch:
 
 jobs:
-  redeploy:
+  health-check:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Render Redeploy
+      - name: Check bot health
+        id: health
+        run: |
+          RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.CHAT_ID }}" \
+            -d "text=/health" \
+            -w "\n%{http_code}" | tail -1)
+          
+          if [ "$RESPONSE" = "200" ]; then
+            echo "status=healthy" >> $GITHUB_OUTPUT
+          else
+            echo "status=down" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Trigger Render Redeploy if bot is down
+        if: steps.health.outputs.status == 'down'
         run: |
           curl -X POST ${{ secrets.REDEPLOY }}
