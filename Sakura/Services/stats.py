@@ -2,12 +2,12 @@
 import time
 import psutil
 from pyrogram import Client
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, Message
 from pyrogram.enums import ParseMode
 from Sakura.Core.helpers import log_action
 from Sakura import state
 
-async def send_stats(chat_id: int, client: Client, is_refresh: bool = False):
+async def send_stats(chat_id: int, client: Client, is_refresh: bool = False, message: Message = None):
     """Send or update stats message with current data"""
     try:
         ping_start = time.time()
@@ -23,7 +23,8 @@ async def send_stats(chat_id: int, client: Client, is_refresh: bool = False):
         days = int(uptime_seconds // 86400)
         hours = int((uptime_seconds % 86400) // 3600)
         minutes = int((uptime_seconds % 3600) // 60)
-        uptime_str = f"{days}d {hours}h {minutes}m"
+        seconds = int(uptime_seconds % 60)
+        uptime_str = f"{days}d {hours}h {minutes}m {seconds}s"
 
         cpu_percent = psutil.cpu_percent(interval=0.1)
         memory = psutil.virtual_memory()
@@ -68,15 +69,41 @@ async def send_stats(chat_id: int, client: Client, is_refresh: bool = False):
         if is_refresh:
             return stats_message, reply_markup
         else:
-            await client.send_message(
-                chat_id=chat_id,
-                text=stats_message,
-                parse_mode=ParseMode.HTML,
-                reply_markup=reply_markup,
-                link_preview_options=LinkPreviewOptions(is_disabled=True)
-            )
+            # Check if it's a group or private chat
+            if message:
+                # If message object is provided, check chat type
+                if message.chat.type in ["group", "supergroup"]:
+                    # Reply to the message in groups
+                    await message.reply_text(
+                        text=stats_message,
+                        parse_mode=ParseMode.HTML,
+                        reply_markup=reply_markup,
+                        link_preview_options=LinkPreviewOptions(is_disabled=True)
+                    )
+                else:
+                    # Send normally in private chats
+                    await client.send_message(
+                        chat_id=chat_id,
+                        text=stats_message,
+                        parse_mode=ParseMode.HTML,
+                        reply_markup=reply_markup,
+                        link_preview_options=LinkPreviewOptions(is_disabled=True)
+                    )
+            else:
+                # Fallback: send normally if no message object
+                await client.send_message(
+                    chat_id=chat_id,
+                    text=stats_message,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=reply_markup,
+                    link_preview_options=LinkPreviewOptions(is_disabled=True)
+                )
 
     except Exception as e:
         log_action("ERROR", f"❌ Error generating stats message: {e}", {})
         if not is_refresh:
-            await client.send_message(chat_id, "❌ Error generating statistics!")
+            error_msg = "❌ Error generating statistics!"
+            if message and message.chat.type in ["group", "supergroup"]:
+                await message.reply_text(error_msg)
+            else:
+                await client.send_message(chat_id, error_msg)
