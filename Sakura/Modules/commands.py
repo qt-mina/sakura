@@ -6,16 +6,18 @@ from pyrogram.types import Message, BotCommand, LinkPreviewOptions
 from pyrogram.enums import ParseMode, ChatType
 from Sakura.Core.helpers import fetch_user, log_action, get_mention, get_error
 from Sakura.Services.tracking import track_user
+from Sakura.Services.stats import send_stats
 from Sakura.Modules.reactions import EMOJI_REACT
 from Sakura.Modules.effects import animate_reaction, add_reaction, photo_effect
 from Sakura.Modules.typing import sticker_action, photo_action
 from Sakura.Database.constants import START_STICKERS, SAKURA_IMAGES
-from Sakura.Modules.keyboards import start_menu, help_menu
+from Sakura.Modules.keyboards import start_menu, help_menu, broadcast_menu
 from Sakura.Core.config import PING_LINK, OWNER_ID, COMMAND_PREFIXES
 from Sakura.Database.database import get_users, get_groups
 from Sakura.Modules.messages import (
     START_MESSAGES,
     HELP_MESSAGES,
+    BROADCAST_MESSAGES,
 )
 from Sakura import state
 
@@ -30,26 +32,27 @@ COMMANDS = [
 async def start_command_handler(client: Client, message: Message) -> None:
     """Handle /start command"""
     try:
-        user_info = fetch_user(message)
-        log_action("INFO", "🌸 /start command received", user_info)
-        await track_user(message, user_info)
-
+        # ChatAction at the top
         if EMOJI_REACT:
             try:
                 random_emoji = random.choice(EMOJI_REACT)
                 if message.chat.type == ChatType.PRIVATE:
                     await animate_reaction(message.chat.id, message.id, random_emoji)
                 else:
+                    user_info = fetch_user(message)
                     await add_reaction(client, message, random_emoji, user_info)
             except Exception as e:
+                user_info = fetch_user(message)
                 log_action("WARNING", f"⚠️ Failed to add emoji reaction: {e}", user_info)
 
         if message.chat.type == ChatType.PRIVATE and START_STICKERS:
+            user_info = fetch_user(message)
             await sticker_action(client, message.chat.id, user_info)
             random_sticker = random.choice(START_STICKERS)
             await client.send_sticker(chat_id=message.chat.id, sticker=random_sticker)
             log_action("INFO", "✅ Start sticker sent successfully", user_info)
 
+        user_info = fetch_user(message)
         await photo_action(client, message.chat.id, user_info)
         random_image = random.choice(SAKURA_IMAGES)
         keyboard = start_menu()
@@ -66,7 +69,12 @@ async def start_command_handler(client: Client, message: Message) -> None:
                 parse_mode=ParseMode.HTML,
                 reply_markup=keyboard
             )
+
+        # Tracking and logging at the bottom
+        user_info = fetch_user(message)
+        log_action("INFO", "🌸 /start command received", user_info)
         log_action("INFO", "✅ Start command completed successfully", user_info)
+        await track_user(message, user_info)
 
     except Exception as e:
         user_info = fetch_user(message)
@@ -77,20 +85,20 @@ async def start_command_handler(client: Client, message: Message) -> None:
 async def help_command_handler(client: Client, message: Message) -> None:
     """Handle /help command"""
     try:
-        user_info = fetch_user(message)
-        log_action("INFO", "ℹ️ /help command received", user_info)
-        await track_user(message, user_info)
-
+        # ChatAction at the top
         if EMOJI_REACT:
             try:
                 random_emoji = random.choice(EMOJI_REACT)
                 if message.chat.type == ChatType.PRIVATE:
                     await animate_reaction(message.chat.id, message.id, random_emoji)
                 else:
+                    user_info = fetch_user(message)
                     await add_reaction(client, message, random_emoji, user_info)
             except Exception as e:
+                user_info = fetch_user(message)
                 log_action("WARNING", f"⚠️ Failed to add emoji reaction: {e}", user_info)
 
+        user_info = fetch_user(message)
         await photo_action(client, message.chat.id, user_info)
         keyboard = help_menu(expanded=False)
         user_mention = get_mention(message.from_user)
@@ -107,7 +115,12 @@ async def help_command_handler(client: Client, message: Message) -> None:
                 parse_mode=ParseMode.HTML,
                 reply_markup=keyboard
             )
+
+        # Tracking and logging at the bottom
+        user_info = fetch_user(message)
+        log_action("INFO", "ℹ️ /help command received", user_info)
         log_action("INFO", "✅ Help command completed successfully", user_info)
+        await track_user(message, user_info)
 
     except Exception as e:
         user_info = fetch_user(message)
@@ -121,9 +134,6 @@ async def broadcast_command_handler(client: Client, message: Message) -> None:
     log_action("INFO", "📢 Broadcast command received from owner", user_info)
     state.user_ids.update(await get_users())
     state.group_ids.update(await get_groups())
-
-    from Sakura.Modules.keyboards import broadcast_menu
-    from Sakura.Modules.messages import BROADCAST_MESSAGES
 
     keyboard = broadcast_menu()
     text = BROADCAST_MESSAGES["select_target"].format(
@@ -154,7 +164,6 @@ async def stats_command_handler(client: Client, message: Message) -> None:
     try:
         user_info = fetch_user(message)
         log_action("INFO", "📊 /stats command received from owner", user_info)
-        from Sakura.Services.stats import send_stats
         await send_stats(message.chat.id, client, is_refresh=False)
         log_action("INFO", "✅ Bot statistics sent to owner", user_info)
     except Exception as e:
