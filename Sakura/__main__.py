@@ -1,5 +1,6 @@
 # Sakura/__main__.py
 import asyncio
+import signal
 import uvloop
 from pyrogram import Client
 from pyrogram.errors import FloodWait
@@ -33,6 +34,7 @@ async def post_init(app: Client):
     valkey_success = await connect_cache()
     if not valkey_success:
         logger.warning("⚠️ Valkey initialization failed. Bot will continue with memory fallback.")
+    
     db_success = await connect_database()
     if not db_success:
         logger.error("❌ Database initialization failed. Bot will continue without persistence.")
@@ -44,6 +46,8 @@ async def post_init(app: Client):
 
 async def post_shutdown(app: Client):
     """Post shutdown tasks"""
+    logger.info("🧹 Starting cleanup process...")
+    
     if state.cleanup_task and not state.cleanup_task.done():
         logger.info("🛑 Cancelling cleanup task...")
         state.cleanup_task.cancel()
@@ -51,8 +55,13 @@ async def post_shutdown(app: Client):
             await state.cleanup_task
         except asyncio.CancelledError:
             logger.info("✅ Cleanup task cancelled successfully")
+    
+    logger.info("📊 Closing database connections...")
     await close_database()
+    
+    logger.info("💾 Closing cache connections...")
     await close_cache()
+    
     logger.info("🌸 Sakura Bot shutdown completed!")
 
 
@@ -61,6 +70,7 @@ async def sakura() -> None:
     logger.info("🌸 Sakura Bot is starting up...")
 
     if not validate_config():
+        logger.error("❌ Configuration validation failed!")
         return
 
     logger.info("🚀 Initializing clients...")
@@ -75,30 +85,60 @@ async def sakura() -> None:
         plugins=dict(root="Sakura.Modules")
     )
 
-    while True:  # Loop to retry after FloodWait without recursion
-        try:
-            await app.start()
-            await post_init(app)
-            logger.info("🌸 Sakura Bot is now online!")
-            await asyncio.Event().wait()
-        except FloodWait as e:
-            logger.warning(f"⏳ FloodWait triggered: Sleeping for {e.value} seconds...")
-            await asyncio.sleep(e.value)
-            logger.info("🔄 Retrying after FloodWait...")
-            continue  # retry loop
-        except KeyboardInterrupt:
-            logger.info("🛑 Bot stopped by user.")
-            break
-        except Exception as e:
-            logger.error(f"💥 An unexpected error occurred: {e}", exc_info=True)
-            break
-        finally:
-            logger.info("🔌 Shutting down...")
-            await post_shutdown(app)
-            if app.is_connected:
+    # Create an event for graceful shutdown
+    shutdown_event = asyncio.Event()
+    
+    def signal_handler(signum):
+        """Handle shutdown signals"""
+        signame = signal.Signals(signum).name
+        logger.info(f"🛑 Received {signame} signal, initiating graceful shutdown...")
+        shutdown_event.set()
+    
+    # Register signal handlers for graceful shutdown
+    loop = asyncio.get_event_loop()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, lambda s=sig: signal_handler(s))
+
+    try:
+        while True:
+            try:
+                logger.info("🔌 Starting Pyrogram client...")
+                await app.start()
+                await post_init(app)
+                logger.info("🌸 Sakura Bot is now online!")
+                
+                # Wait for shutdown signal
+                await shutdown_event.wait()
+                logger.info("🛑 Shutdown signal received, stopping bot...")
+                break
+                
+            except FloodWait as e:
+                logger.warning(f"⏳ FloodWait triggered: Sleeping for {e.value} seconds...")
+                await asyncio.sleep(e.value)
+                logger.info("🔄 Retrying after FloodWait...")
+                continue
+                
+            except KeyboardInterrupt:
+                logger.info("🛑 Bot stopped by user (KeyboardInterrupt).")
+                break
+                
+            except Exception as e:
+                logger.error(f"💥 An unexpected error occurred: {e}", exc_info=True)
+                break
+                
+    finally:
+        logger.info("🔌 Shutting down Sakura...")
+        await post_shutdown(app)
+        
+        if app.is_connected:
+            logger.info("📡 Stopping Pyrogram client...")
+            try:
                 await app.stop()
-            logger.info("🌸 Sakura Bot has been shut down.")
-            break  # exit loop after cleanup
+                logger.info("✅ Pyrogram client stopped successfully")
+            except Exception as e:
+                logger.error(f"❌ Error stopping Pyrogram client: {e}")
+        
+        logger.info("🌸 Sakura Bot has been shut down gracefully.")
 
 
 if __name__ == "__main__":
@@ -116,7 +156,6 @@ if __name__ == "__main__":
         asyncio.run(sakura())
     except KeyboardInterrupt:
         logger.info("👋 Sakura says bye bye")
-        pass
     except Exception as e:
         logger.error(f"👊 Sakura faced an enemy: {e}", exc_info=True)
     finally:
