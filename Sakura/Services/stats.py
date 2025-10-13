@@ -51,16 +51,16 @@ async def send_stats(chat_id: int, client: Client, is_refresh: bool = False):
         stats_message = f"""<b>Statistics and info</b> 🌸
 
 <blockquote>🏓 <b>Bot Performance</b>
-├ Uptime: {uptime_str}
-└ Ping: {ping_ms}ms</blockquote>
+├─ Uptime: {uptime_str}
+╰─ Ping: {ping_ms}ms</blockquote>
 <blockquote>👥 User Statistics
-├ Total Users: {db_stats['users_count']}
-├ Total Groups: {db_stats['groups_count']}
-├ Total Purchases: {db_stats['total_purchases']}
-└ Total Revenue: {db_stats['total_revenue']} ⭐</blockquote>
+├─ Total Users: {db_stats['users_count']}
+├─ Total Groups: {db_stats['groups_count']}
+├─ Total Purchases: {db_stats['total_purchases']}
+╰─ Total Revenue: {db_stats['total_revenue']} Star</blockquote>
 <blockquote>📡 System Resources
-├ CPU Usage: {cpu_percent}%
-└ Memory: {memory.percent}% ({memory.used // (1024 ** 3)}GB / {memory.total // (1024 ** 3)}GB)</blockquote>"""
+├─ CPU Usage: {cpu_percent}%
+╰─ Memory: {memory.percent}% ({memory.used // (1024 ** 3)}GB / {memory.total // (1024 ** 3)}GB)</blockquote>"""
 
         keyboard = [[InlineKeyboardButton("☘️ Refresh", callback_data="refresh_stats")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
