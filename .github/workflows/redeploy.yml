@@ -38,10 +38,14 @@ jobs:
         if: steps.cooldown.outputs.in_cooldown == 'true'
         run: |
           TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S UTC')
+          MESSAGE="⏳ <b>Health Check Skipped</b>
+🕒 Time: $TIMESTAMP
+💤 Cooldown active: ${{ steps.cooldown.outputs.remaining }}s remaining
+📝 Allowing bot to fully restart"
+          
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.CHAT_ID }}" \
-            -d "text=⏳ Health Check Skipped%0A🕒 Time: $TIMESTAMP%0A💤 Cooldown active: ${{ steps.cooldown.outputs.remaining }}s remaining%0A📝 Allowing bot to fully restart" \
-            -d "parse_mode=HTML"
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg chat_id "${{ secrets.CHAT_ID }}" --arg text "$MESSAGE" '{chat_id: $chat_id, text: $text, parse_mode: "HTML"}')"
 
       - name: Check bot health
         if: steps.cooldown.outputs.in_cooldown != 'true'
@@ -54,19 +58,27 @@ jobs:
           
           if [ "$RESPONSE" = "200" ]; then
             echo "status=healthy" >> $GITHUB_OUTPUT
-            echo "message=✅ Bot Status: HEALTHY%0A🕒 Time: $TIMESTAMP%0A📊 HTTP Code: $RESPONSE" >> $GITHUB_OUTPUT
+            MESSAGE="✅ <b>Bot Status: HEALTHY</b>
+🕒 Time: $TIMESTAMP
+📊 HTTP Code: $RESPONSE"
           else
             echo "status=down" >> $GITHUB_OUTPUT
-            echo "message=❌ Bot Status: DOWN%0A🕒 Time: $TIMESTAMP%0A📊 HTTP Code: $RESPONSE%0A⚠️ Initiating recovery..." >> $GITHUB_OUTPUT
+            MESSAGE="❌ <b>Bot Status: DOWN</b>
+🕒 Time: $TIMESTAMP
+📊 HTTP Code: $RESPONSE
+⚠️ Initiating recovery..."
           fi
+          
+          echo "message<<EOF" >> $GITHUB_OUTPUT
+          echo "$MESSAGE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Send status update
         if: steps.cooldown.outputs.in_cooldown != 'true'
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.CHAT_ID }}" \
-            -d "text=${{ steps.health.outputs.message }}" \
-            -d "parse_mode=HTML"
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg chat_id "${{ secrets.CHAT_ID }}" --arg text "${{ steps.health.outputs.message }}" '{chat_id: $chat_id, text: $text, parse_mode: "HTML"}')"
 
       - name: Wait before redeploying
         if: steps.health.outputs.status == 'down'
@@ -84,19 +96,28 @@ jobs:
           
           if [ "$RESPONSE" = "200" ]; then
             echo "status=healthy" >> $GITHUB_OUTPUT
-            echo "message=✅ Bot Status: RECOVERED%0A🕒 Time: $TIMESTAMP%0A📊 HTTP Code: $RESPONSE%0A💡 No redeploy needed" >> $GITHUB_OUTPUT
+            MESSAGE="✅ <b>Bot Status: RECOVERED</b>
+🕒 Time: $TIMESTAMP
+📊 HTTP Code: $RESPONSE
+💡 No redeploy needed"
           else
             echo "status=down" >> $GITHUB_OUTPUT
-            echo "message=❌ Bot Status: STILL DOWN%0A🕒 Time: $TIMESTAMP%0A📊 HTTP Code: $RESPONSE%0A🔄 Triggering redeploy now..." >> $GITHUB_OUTPUT
+            MESSAGE="❌ <b>Bot Status: STILL DOWN</b>
+🕒 Time: $TIMESTAMP
+📊 HTTP Code: $RESPONSE
+🔄 Triggering redeploy now..."
           fi
+          
+          echo "message<<EOF" >> $GITHUB_OUTPUT
+          echo "$MESSAGE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Send recheck update
         if: steps.health.outputs.status == 'down'
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.CHAT_ID }}" \
-            -d "text=${{ steps.recheck.outputs.message }}" \
-            -d "parse_mode=HTML"
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg chat_id "${{ secrets.CHAT_ID }}" --arg text "${{ steps.recheck.outputs.message }}" '{chat_id: $chat_id, text: $text, parse_mode: "HTML"}')"
 
       - name: Check for concurrent redeploy
         id: concurrency
@@ -118,10 +139,14 @@ jobs:
         if: steps.concurrency.outputs.concurrent == 'true'
         run: |
           TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S UTC')
+          MESSAGE="⚠️ <b>Redeploy Skipped</b>
+🕒 Time: $TIMESTAMP
+🔄 Another workflow is already redeploying
+⏳ Waiting for that to complete"
+          
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.CHAT_ID }}" \
-            -d "text=⚠️ Redeploy Skipped%0A🕒 Time: $TIMESTAMP%0A🔄 Another workflow is already redeploying%0A⏳ Waiting for that to complete" \
-            -d "parse_mode=HTML"
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg chat_id "${{ secrets.CHAT_ID }}" --arg text "$MESSAGE" '{chat_id: $chat_id, text: $text, parse_mode: "HTML"}')"
 
       - name: Trigger Render Redeploy
         id: redeploy
@@ -134,15 +159,26 @@ jobs:
           
           if [ "$DEPLOY_RESPONSE" = "200" ] || [ "$DEPLOY_RESPONSE" = "201" ]; then
             echo "success=true" >> $GITHUB_OUTPUT
-            echo "message=🔄 Redeploy TRIGGERED%0A🕒 Time: $TIMESTAMP%0A📊 Deploy Response: $DEPLOY_RESPONSE%0A⏳ Bot will restart in 2-3 minutes%0A💤 Health checks paused for 5 minutes" >> $GITHUB_OUTPUT
+            MESSAGE="🔄 <b>Redeploy TRIGGERED</b>
+🕒 Time: $TIMESTAMP
+📊 Deploy Response: $DEPLOY_RESPONSE
+⏳ Bot will restart in 2-3 minutes
+💤 Health checks paused for 5 minutes"
             
             # Save redeploy timestamp
             echo "$CURRENT_TIME" > last_redeploy.txt
           else
             echo "success=false" >> $GITHUB_OUTPUT
-            echo "message=❌ Redeploy FAILED%0A🕒 Time: $TIMESTAMP%0A📊 Deploy Response: $DEPLOY_RESPONSE%0A🚨 Manual intervention required!" >> $GITHUB_OUTPUT
+            MESSAGE="❌ <b>Redeploy FAILED</b>
+🕒 Time: $TIMESTAMP
+📊 Deploy Response: $DEPLOY_RESPONSE
+🚨 Manual intervention required!"
             exit 1
           fi
+          
+          echo "message<<EOF" >> $GITHUB_OUTPUT
+          echo "$MESSAGE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Save redeploy timestamp
         if: steps.redeploy.outputs.success == 'true'
@@ -156,16 +192,19 @@ jobs:
         if: steps.health.outputs.status == 'down' && steps.recheck.outputs.status == 'down' && steps.concurrency.outputs.concurrent != 'true'
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.CHAT_ID }}" \
-            -d "text=${{ steps.redeploy.outputs.message }}" \
-            -d "parse_mode=HTML"
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg chat_id "${{ secrets.CHAT_ID }}" --arg text "${{ steps.redeploy.outputs.message }}" '{chat_id: $chat_id, text: $text, parse_mode: "HTML"}')"
 
       - name: Send workflow failure alert
         if: failure()
         run: |
           TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S UTC')
+          MESSAGE="🚨 <b>WORKFLOW ERROR</b>
+🕒 Time: $TIMESTAMP
+⚠️ Health check workflow failed
+🔗 Check: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.CHAT_ID }}" \
-            -d "text=🚨 WORKFLOW ERROR%0A🕒 Time: $TIMESTAMP%0A⚠️ Health check workflow failed%0A🔗 Check: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" \
-            -d "parse_mode=HTML" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -n --arg chat_id "${{ secrets.CHAT_ID }}" --arg text "$MESSAGE" '{chat_id: $chat_id, text: $text, parse_mode: "HTML"}')" \
             || true
