@@ -161,7 +161,7 @@ async def stats_refresh_handler(client: Client, callback_query: CallbackQuery) -
             return
 
         log_action("INFO", "🔄 Stats refresh callback received from owner", user_info)
-        await callback_query.answer("🔄 Refreshing statistics...", show_alert=False)
+        await callback_query.answer("My pussy becoming wet by those touch in my boobs 🥺", show_alert=False)
 
         from Sakura.Services.stats import send_stats
         stats_message, reply_markup = await send_stats(callback_query.message.chat.id, client, is_refresh=True)
