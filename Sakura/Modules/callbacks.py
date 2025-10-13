@@ -42,7 +42,7 @@ async def start_callback_handler(client: Client, callback_query: CallbackQuery) 
             await callback_query.answer(START_MESSAGES["callback_answers"]["hi"], show_alert=False)
             await send_typing(client, callback_query.message.chat.id, user_info)
             user_name = callback_query.from_user.first_name or ""
-            hi_response = await get_response("Hi sakura", user_name, user_info, callback_query.from_user.id)
+            hi_response = await get_response("Hi", user_name, user_info, callback_query.from_user.id)
 
             if callback_query.message.chat.type == "private":
                 await send_effect(client, callback_query.message.chat.id, hi_response)
