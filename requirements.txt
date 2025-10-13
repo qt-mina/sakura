@@ -10,5 +10,3 @@ kurigram
 elevenlabs
 google-genai
 aiohttp[speedups]
-pydub
-pyaudioop
