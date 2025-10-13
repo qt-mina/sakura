@@ -8,19 +8,25 @@ This directory contains GitHub-specific configurations and automations for the S
 
 ## 🔧 Workflows
 
-### Auto Redeploy Every 6 Hours
-Automatically triggers a Render redeploy every 6 hours to keep the bot fresh and prevent memory leaks.
+### Bot Health Check & Auto-Redeploy
 
-**Schedule (Bangladesh Time GMT+6):**
-- 6:00 AM
-- 12:00 PM
-- 6:00 PM
-- 12:00 AM
+Automatically monitors the bot's health every 1 minute. If the bot goes down, it triggers an automatic redeploy on Render.
+
+**How it works:**
+- Sends a test message to your bot every minute
+- If bot responds (HTTP 200), it's alive
+- If bot doesn't respond, automatically triggers redeploy
+- No messages sent to chat - silent health checks only
+
+**Schedule:**
+- Runs every 1 minute continuously
 
 ## 🔐 Secrets Required
 
 The following secrets must be configured in GitHub repository settings:
 
+- `BOT_TOKEN` - Your Telegram bot token
+- `CHAT_ID` - Chat ID for health checks (can be your personal chat)
 - `REDEPLOY` - Render deploy hook URL for triggering redeployments
 
 ## 📚 Resources
