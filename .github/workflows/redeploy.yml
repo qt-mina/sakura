@@ -1,0 +1,14 @@
+name: Auto Redeploy Every 12 Hours
+
+on:
+  schedule:
+    - cron: '0 */12 * * *'  # Runs at 00:00 and 12:00 UTC daily
+  workflow_dispatch:  # Allows manual trigger
+
+jobs:
+  redeploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Redeploy
+        run: |
+          curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }}
