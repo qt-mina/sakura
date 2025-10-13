@@ -157,7 +157,7 @@ async def stats_refresh_handler(client: Client, callback_query: CallbackQuery) -
         user_info = fetch_user(callback_query.message)
         if callback_query.from_user.id != OWNER_ID:
             log_action("WARNING", "⚠️ Non-owner attempted stats refresh", user_info)
-            await callback_query.answer("You're not authorized to use this 🚫", show_alert=True)
+            await callback_query.answer("Only my asad can touch this, you weak dumbass 😝", show_alert=True)
             return
 
         log_action("INFO", "🔄 Stats refresh callback received from owner", user_info)
