@@ -2,49 +2,14 @@ name: Bot Health Check & Auto-Redeploy
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # Runs every 5 minutes
+    - cron: '*/10 * * * *'  # Runs every 10 minutes
   workflow_dispatch:
 
 jobs:
   health-check:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Check for recent redeploy
-        id: cooldown
-        run: |
-          # Download the last redeploy timestamp artifact if it exists
-          gh run download --name redeploy-timestamp --dir . 2>/dev/null || echo "0" > last_redeploy.txt
-          
-          LAST_REDEPLOY=$(cat last_redeploy.txt 2>/dev/null || echo "0")
-          CURRENT_TIME=$(date +%s)
-          TIME_DIFF=$((CURRENT_TIME - LAST_REDEPLOY))
-          COOLDOWN_PERIOD=300  # 5 minutes in seconds
-          
-          if [ "$TIME_DIFF" -lt "$COOLDOWN_PERIOD" ]; then
-            REMAINING=$((COOLDOWN_PERIOD - TIME_DIFF))
-            echo "in_cooldown=true" >> $GITHUB_OUTPUT
-            echo "remaining=$REMAINING" >> $GITHUB_OUTPUT
-            echo "⏳ In cooldown period. $REMAINING seconds remaining until next check."
-          else
-            echo "in_cooldown=false" >> $GITHUB_OUTPUT
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Send cooldown notification
-        if: steps.cooldown.outputs.in_cooldown == 'true'
-        run: |
-          TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S UTC')
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.CHAT_ID }}" \
-            -d "text=⏳ Health Check Skipped%0A🕒 Time: $TIMESTAMP%0A💤 Cooldown active: ${{ steps.cooldown.outputs.remaining }}s remaining%0A📝 Allowing bot to fully restart" \
-            -d "parse_mode=HTML"
-
       - name: Check bot health
-        if: steps.cooldown.outputs.in_cooldown != 'true'
         id: health
         run: |
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
@@ -61,7 +26,6 @@ jobs:
           fi
 
       - name: Send status update
-        if: steps.cooldown.outputs.in_cooldown != 'true'
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.CHAT_ID }}" \
@@ -98,62 +62,25 @@ jobs:
             -d "text=${{ steps.recheck.outputs.message }}" \
             -d "parse_mode=HTML"
 
-      - name: Check for concurrent redeploy
-        id: concurrency
-        if: steps.health.outputs.status == 'down' && steps.recheck.outputs.status == 'down'
-        run: |
-          # Check if another workflow run is currently deploying
-          RUNNING_WORKFLOWS=$(gh run list --workflow="${{ github.workflow }}" --status=in_progress --json databaseId --jq 'length')
-          
-          if [ "$RUNNING_WORKFLOWS" -gt 1 ]; then
-            echo "concurrent=true" >> $GITHUB_OUTPUT
-            echo "⚠️ Another redeploy workflow is already running. Skipping to prevent race condition."
-          else
-            echo "concurrent=false" >> $GITHUB_OUTPUT
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Send concurrent workflow notification
-        if: steps.concurrency.outputs.concurrent == 'true'
-        run: |
-          TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S UTC')
-          curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.CHAT_ID }}" \
-            -d "text=⚠️ Redeploy Skipped%0A🕒 Time: $TIMESTAMP%0A🔄 Another workflow is already redeploying%0A⏳ Waiting for that to complete" \
-            -d "parse_mode=HTML"
-
       - name: Trigger Render Redeploy
         id: redeploy
-        if: steps.health.outputs.status == 'down' && steps.recheck.outputs.status == 'down' && steps.concurrency.outputs.concurrent != 'true'
+        if: steps.health.outputs.status == 'down' && steps.recheck.outputs.status == 'down'
         run: |
           DEPLOY_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST ${{ secrets.REDEPLOY }})
           
           TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S UTC')
-          CURRENT_TIME=$(date +%s)
           
           if [ "$DEPLOY_RESPONSE" = "200" ] || [ "$DEPLOY_RESPONSE" = "201" ]; then
             echo "success=true" >> $GITHUB_OUTPUT
-            echo "message=🔄 Redeploy TRIGGERED%0A🕒 Time: $TIMESTAMP%0A📊 Deploy Response: $DEPLOY_RESPONSE%0A⏳ Bot will restart in 2-3 minutes%0A💤 Health checks paused for 5 minutes" >> $GITHUB_OUTPUT
-            
-            # Save redeploy timestamp
-            echo "$CURRENT_TIME" > last_redeploy.txt
+            echo "message=🔄 Redeploy TRIGGERED%0A🕒 Time: $TIMESTAMP%0A📊 Deploy Response: $DEPLOY_RESPONSE%0A⏳ Bot will restart in 2-3 minutes" >> $GITHUB_OUTPUT
           else
             echo "success=false" >> $GITHUB_OUTPUT
             echo "message=❌ Redeploy FAILED%0A🕒 Time: $TIMESTAMP%0A📊 Deploy Response: $DEPLOY_RESPONSE%0A🚨 Manual intervention required!" >> $GITHUB_OUTPUT
             exit 1
           fi
 
-      - name: Save redeploy timestamp
-        if: steps.redeploy.outputs.success == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: redeploy-timestamp
-          path: last_redeploy.txt
-          retention-days: 1
-
       - name: Send redeploy status
-        if: steps.health.outputs.status == 'down' && steps.recheck.outputs.status == 'down' && steps.concurrency.outputs.concurrent != 'true'
+        if: steps.health.outputs.status == 'down' && steps.recheck.outputs.status == 'down'
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.CHAT_ID }}" \
