@@ -22,20 +22,20 @@ from Sakura import state
 async def meow_command_handler(client: Client, message: Message) -> None:
     """Send an invoice for sakura flowers."""
     try:
-        user_info = fetch_user(message)
-        log_action("INFO", "🌸 /meow command received", user_info)
-        await track_user(message, user_info)
-
+        # ChatAction at the top
         if EMOJI_REACT:
             try:
                 random_emoji = random.choice(EMOJI_REACT)
                 if message.chat.type == ChatType.PRIVATE:
                     await animate_reaction(message.chat.id, message.id, random_emoji)
                 else:
+                    user_info = fetch_user(message)
                     await add_reaction(client, message, random_emoji, user_info)
             except Exception as e:
+                user_info = fetch_user(message)
                 log_action("WARNING", f"⚠️ Failed to add emoji reaction: {e}", user_info)
 
+        user_info = fetch_user(message)
         await send_typing(client, message.chat.id, user_info)
 
         amount = 50
@@ -51,6 +51,11 @@ async def meow_command_handler(client: Client, message: Message) -> None:
         else:
             await send_invoice(client, message.chat.id, user_info, amount)
 
+        # Tracking and logging at the bottom
+        user_info = fetch_user(message)
+        log_action("INFO", "🌸 /meow command received", user_info)
+        await track_user(message, user_info)
+
     except Exception as e:
         user_info = fetch_user(message)
         log_action("ERROR", f"❌ Error sending invoice: {e}", user_info)
@@ -60,20 +65,20 @@ async def meow_command_handler(client: Client, message: Message) -> None:
 async def fams_command_handler(client: Client, message: Message) -> None:
     """Show all flower buyers with their donation amounts."""
     try:
-        user_info = fetch_user(message)
-        log_action("INFO", "💝 /fams command received", user_info)
-        await track_user(message, user_info)
-
+        # ChatAction at the top
         if EMOJI_REACT:
             try:
                 random_emoji = random.choice(EMOJI_REACT)
                 if message.chat.type == ChatType.PRIVATE:
                     await animate_reaction(message.chat.id, message.id, random_emoji)
                 else:
+                    user_info = fetch_user(message)
                     await add_reaction(client, message, random_emoji, user_info)
             except Exception as e:
+                user_info = fetch_user(message)
                 log_action("WARNING", f"⚠️ Failed to add emoji reaction: {e}", user_info)
 
+        user_info = fetch_user(message)
         await send_typing(client, message.chat.id, user_info)
         purchases = await get_purchases()
 
@@ -103,6 +108,11 @@ async def fams_command_handler(client: Client, message: Message) -> None:
             await send_effect(message.chat.id, buyers_text)
         else:
             await message.reply_text(buyers_text, parse_mode=ParseMode.HTML, link_preview_options=LinkPreviewOptions(is_disabled=True))
+
+        # Tracking and logging at the bottom
+        user_info = fetch_user(message)
+        log_action("INFO", "💝 /fams command received", user_info)
+        await track_user(message, user_info)
 
     except Exception as e:
         user_info = fetch_user(message)
