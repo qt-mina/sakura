@@ -62,7 +62,7 @@ async def send_stats(chat_id: int, client: Client, is_refresh: bool = False):
 ├─ CPU Usage: {cpu_percent}%
 ╰─ Memory: {memory.percent}% ({memory.used // (1024 ** 3)}GB / {memory.total // (1024 ** 3)}GB)</blockquote>"""
 
-        keyboard = [[InlineKeyboardButton("☘️ Refresh", callback_data="refresh_stats")]]
+        keyboard = [[InlineKeyboardButton("🍒 Boobies", callback_data="refresh_stats")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         if is_refresh:
