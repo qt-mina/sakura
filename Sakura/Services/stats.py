@@ -48,7 +48,7 @@ async def send_stats(chat_id: int, client: Client, is_refresh: bool = False):
             except Exception as e:
                 log_action("ERROR", f"Error getting database stats: {e}", {})
 
-        stats_message = f"""<b>Sakura Statistics</b> 🌸
+        stats_message = f"""<b>Statistics and info</b> 🌸
 
 <blockquote>🏓 <b>Bot Performance</b>
 ├ Uptime: {uptime_str}
@@ -60,11 +60,11 @@ async def send_stats(chat_id: int, client: Client, is_refresh: bool = False):
 ├ Total Purchases: {db_stats['total_purchases']}
 └ Total Revenue: {db_stats['total_revenue']} ⭐</blockquote>
 
-<blockquote>🖥️ System Resources
+<blockquote>📡 System Resources
 ├ CPU Usage: {cpu_percent}%
 └ Memory: {memory.percent}% ({memory.used // (1024 ** 3)}GB / {memory.total // (1024 ** 3)}GB)</blockquote>"""
 
-        keyboard = [[InlineKeyboardButton("🔄 Refresh", callback_data="refresh_stats")]]
+        keyboard = [[InlineKeyboardButton("☘️ Refresh", callback_data="refresh_stats")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
         if is_refresh:
