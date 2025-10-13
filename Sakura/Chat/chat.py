@@ -7,6 +7,7 @@ from Sakura.Core.logging import logger
 from Sakura.Core.helpers import log_action, get_fallback, get_error
 from Sakura.Database.conversation import get_history, update_history
 from Sakura.Chat.prompts import SAKURA_PROMPT
+from Sakura.Chat.audio import transcribe_audio
 from Sakura import state
 
 def init_client():
@@ -16,6 +17,7 @@ def init_client():
         return
     logger.info("🫡 Initializing Google GenAI API key.")
     try:
+        genai.configure(api_key=GEMINI_API_KEY)
         state.gemini_client = genai.Client(api_key=GEMINI_API_KEY)
         logger.info("✅ Chat client (Gemini) initialized successfully")
     except Exception as e:
@@ -25,7 +27,9 @@ async def get_response(
     user_message: str,
     user_id: int,
     user_info: Dict[str, any],
-    image_bytes: Optional[bytes] = None
+    image_bytes: Optional[bytes] = None,
+    audio_bytes: Optional[bytes] = None,
+    audio_mime_type: Optional[str] = None
 ) -> Optional[str]:
     """Get response from Gemini API using ChatSession.
     
@@ -35,8 +39,17 @@ async def get_response(
     """
     user_name = user_info.get("first_name", "User")
 
-    # Convert user_message to plain string if it's not already
-    message_text = str(user_message) if user_message else ""
+    # Transcribe audio if present
+    if audio_bytes and audio_mime_type:
+        transcribed_text = await transcribe_audio(audio_bytes, audio_mime_type)
+        if transcribed_text:
+            message_text = transcribed_text
+        else:
+            log_action("ERROR", "Audio transcription failed.", user_info)
+            return "Sorry, I couldn't process the audio. Please try again."
+    else:
+        # Convert user_message to plain string if it's not already
+        message_text = str(user_message) if user_message else ""
 
     log_action("DEBUG", f"🤖 Getting AI response for '{message_text}'", user_info)
 
