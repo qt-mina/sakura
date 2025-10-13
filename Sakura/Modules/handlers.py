@@ -49,9 +49,8 @@ async def handle_messages(client: Client, message: Message) -> None:
             log_action("WARNING", "⏱️ Rate limited - ignoring message", user_info)
             return
 
-        # Show typing only in private chats
-        if chat_type == 'private':
-            asyncio.create_task(send_typing(client, message.chat.id, user_info))
+        # Start typing indicator immediately
+        asyncio.create_task(send_typing(client, message.chat.id, user_info))
 
         asyncio.create_task(handle_reaction(client, message, user_info))
 
@@ -67,7 +66,7 @@ async def handle_messages(client: Client, message: Message) -> None:
 
         # Default to text-based handling
         user_message = message.text or message.caption or "Media message"
-        log_action("INFO", f"💬 Text/media message received: '{user_message}'", user_info)
+        log_action("INFO", f"💬 Text/media message received: '{user_message[:100]}...'", user_info)
 
         if "in your voice" in user_message.lower():
             last_bot_message = await get_last_message(user_id)
@@ -93,7 +92,7 @@ async def handle_messages(client: Client, message: Message) -> None:
 
         await set_last_message(user_id, ai_response)
 
-        log_action("DEBUG", f"📤 Sending response: '{ai_response}'", user_info)
+        log_action("DEBUG", f"📤 Sending response: '{ai_response[:50]}...'", user_info)
 
         voice_data = None
         if random.random() < 0.1:  # 10% chance
