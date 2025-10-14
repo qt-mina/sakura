@@ -2,7 +2,7 @@ name: Bot Health Check & Auto-Redeploy
 
 on:
   schedule:
-    - cron: '* * * * *'  # Runs every 1 minute
+    - cron: '0,10,20,30,40,50 * * * *'  # Runs every 10 minutes
   workflow_dispatch:
 
 jobs:
@@ -26,7 +26,7 @@ jobs:
           TEST_MSG_RESPONSE=$(curl -s -X POST \
             "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.CHAT_ID }}" \
-            -d "text=✅ <b>Bot Health Check</b>%0A%0A🕒 Time: $CHECK_TIME%0A📊 Status: <b>Operational</b>%0A🔄 API: Responding%0A✉️ Messages: Working%0A%0A⏭ Next check in 1 minute" \
+            -d "text=✅ <b>Bot Health Check</b>%0A%0A🕒 Time: $CHECK_TIME%0A📊 Status: <b>Operational</b>%0A🔄 API: Responding%0A✉️ Messages: Working%0A%0A⏭ Next check in 10 minutes" \
             -d "parse_mode=HTML" \
             -d "disable_notification=true")
           
