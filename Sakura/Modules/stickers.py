@@ -8,6 +8,7 @@ from pyrogram.types import Message
 from pyrogram.enums import ChatType
 from Sakura.Core.helpers import fetch_user, log_action
 from Sakura.Modules.typing import sticker_action
+from Sakura.Core.logging import logger
 from Sakura import state
 
 
