@@ -3,7 +3,7 @@ import time
 import psutil
 from pyrogram import Client
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, LinkPreviewOptions, Message
-from pyrogram.enums import ParseMode
+from pyrogram.enums import ParseMode, ChatType
 from Sakura.Core.helpers import log_action
 from Sakura import state
 
@@ -72,7 +72,7 @@ async def send_stats(chat_id: int, client: Client, is_refresh: bool = False, mes
             # Check if it's a group or private chat
             if message:
                 # If message object is provided, check chat type
-                if message.chat.type in ["group", "supergroup"]:
+                if message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
                     # Reply to the message in groups
                     await message.reply_text(
                         text=stats_message,
@@ -103,7 +103,7 @@ async def send_stats(chat_id: int, client: Client, is_refresh: bool = False, mes
         log_action("ERROR", f"❌ Error generating stats message: {e}", {})
         if not is_refresh:
             error_msg = "❌ Error generating statistics!"
-            if message and message.chat.type in ["group", "supergroup"]:
+            if message and message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
                 await message.reply_text(error_msg)
             else:
                 await client.send_message(chat_id, error_msg)
