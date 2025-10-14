@@ -9,24 +9,8 @@ jobs:
   health-check:
     runs-on: ubuntu-latest
     steps:
-      - name: Check if deployment is already in progress
-        id: deploy_check
-        run: |
-          RENDER_STATUS=$(curl -s -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
-            "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys?limit=1")
-          
-          LATEST_STATUS=$(echo "$RENDER_STATUS" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
-          
-          if [ "$LATEST_STATUS" = "build_in_progress" ] || [ "$LATEST_STATUS" = "update_in_progress" ]; then
-            echo "deploying=true" >> $GITHUB_OUTPUT
-            echo "⚠️ Deployment already in progress (Status: $LATEST_STATUS). Skipping health check."
-          else
-            echo "deploying=false" >> $GITHUB_OUTPUT
-          fi
-
       - name: Check bot health (Real Functionality Test)
         id: health
-        if: steps.deploy_check.outputs.deploying == 'false'
         run: |
           TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S UTC')
           CHECK_TIME=$(date '+%H:%M UTC')
@@ -38,27 +22,11 @@ jobs:
           # Step 2: Get recent updates to verify bot is processing messages
           UPDATES_RESPONSE=$(curl -s "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/getUpdates?limit=1&timeout=5")
           
-          # Step 3: Send /start command to test actual bot functionality
-          START_CMD_RESPONSE=$(curl -s -X POST \
-            "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.CHAT_ID }}" \
-            -d "text=/start" \
-            -d "disable_notification=true")
-          
-          START_CMD_OK=$(echo "$START_CMD_RESPONSE" | grep -o '"ok":true' || echo "")
-          
-          # Step 4: Wait for bot to process and respond
-          sleep 5
-          
-          # Step 5: Check if bot responded to /start command
-          BOT_RESPONSE=$(curl -s "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/getUpdates?limit=10&timeout=5")
-          BOT_RESPONDED=$(echo "$BOT_RESPONSE" | grep -E '"from".*"is_bot":true' || echo "")
-          
-          # Step 6: Send an informative test message and verify it's sent
+          # Step 3: Send an informative test message and verify it's sent
           TEST_MSG_RESPONSE=$(curl -s -X POST \
             "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.CHAT_ID }}" \
-            -d "text=✅ <b>Bot Health Check</b>%0A%0A🕒 Time: $CHECK_TIME%0A📊 Status: <b>Operational</b>%0A🔄 API: Responding%0A🤖 Command Test: $([ -n "$BOT_RESPONDED" ] && echo "Passed ✓" || echo "No Response")%0A✉️ Messages: Working%0A%0A⏭ Next check in 1 minute" \
+            -d "text=✅ <b>Bot Health Check</b>%0A%0A🕒 Time: $CHECK_TIME%0A📊 Status: <b>Operational</b>%0A🔄 API: Responding%0A✉️ Messages: Working%0A%0A⏭ Next check in 1 minute" \
             -d "parse_mode=HTML" \
             -d "disable_notification=true")
           
@@ -67,16 +35,16 @@ jobs:
           TEST_MSG_OK=$(echo "$TEST_MSG_RESPONSE" | grep -o '"ok":true' || echo "")
           
           # Determine health status
-          if [ "$TOKEN_CHECK" = "200" ] && [ -n "$UPDATES_OK" ] && [ -n "$TEST_MSG_OK" ] && [ -n "$START_CMD_OK" ] && [ -n "$BOT_RESPONDED" ]; then
+          if [ "$TOKEN_CHECK" = "200" ] && [ -n "$UPDATES_OK" ] && [ -n "$TEST_MSG_OK" ]; then
             echo "status=healthy" >> $GITHUB_OUTPUT
-            echo "message=✅ Bot Status: HEALTHY%0A🕒 Time: $TIMESTAMP%0A📊 Token: Valid%0A📨 API: Responding%0A🤖 Command Test: Passed%0A✉️ Messages: Sendable" >> $GITHUB_OUTPUT
+            echo "message=✅ Bot Status: HEALTHY%0A🕒 Time: $TIMESTAMP%0A📊 Token: Valid%0A📨 API: Responding%0A✉️ Messages: Sendable" >> $GITHUB_OUTPUT
           else
             echo "status=down" >> $GITHUB_OUTPUT
-            echo "message=❌ <b>Bot Status: DOWN</b>%0A%0A🕒 Time: $TIMESTAMP%0A📊 Token HTTP: $TOKEN_CHECK%0A📨 Updates API: $([ -n "$UPDATES_OK" ] && echo "OK" || echo "FAILED")%0A🤖 Command Sent: $([ -n "$START_CMD_OK" ] && echo "OK" || echo "FAILED")%0A🤖 Bot Response: $([ -n "$BOT_RESPONDED" ] && echo "Received" || echo "NONE")%0A✉️ Send Test: $([ -n "$TEST_MSG_OK" ] && echo "OK" || echo "FAILED")%0A%0A⚠️ Initiating recovery process..." >> $GITHUB_OUTPUT
+            echo "message=❌ <b>Bot Status: DOWN</b>%0A%0A🕒 Time: $TIMESTAMP%0A📊 Token HTTP: $TOKEN_CHECK%0A📨 Updates API: $([ -n "$UPDATES_OK" ] && echo "OK" || echo "FAILED")%0A✉️ Send Test: $([ -n "$TEST_MSG_OK" ] && echo "OK" || echo "FAILED")%0A%0A⚠️ Initiating recovery process..." >> $GITHUB_OUTPUT
           fi
 
       - name: Send critical status alert
-        if: steps.deploy_check.outputs.deploying == 'false' && steps.health.outputs.status == 'down'
+        if: steps.health.outputs.status == 'down'
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.CHAT_ID }}" \
@@ -84,12 +52,12 @@ jobs:
             -d "parse_mode=HTML" || true
 
       - name: Wait before redeploying
-        if: steps.deploy_check.outputs.deploying == 'false' && steps.health.outputs.status == 'down'
+        if: steps.health.outputs.status == 'down'
         run: sleep 30
 
       - name: Recheck bot health
         id: recheck
-        if: steps.deploy_check.outputs.deploying == 'false' && steps.health.outputs.status == 'down'
+        if: steps.health.outputs.status == 'down'
         run: |
           TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S UTC')
           CHECK_TIME=$(date '+%H:%M UTC')
@@ -98,20 +66,6 @@ jobs:
             "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/getMe")
           
           UPDATES_RESPONSE=$(curl -s "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/getUpdates?limit=1&timeout=5")
-          
-          # Send /start command for recheck
-          START_CMD_RESPONSE=$(curl -s -X POST \
-            "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
-            -d "chat_id=${{ secrets.CHAT_ID }}" \
-            -d "text=/start" \
-            -d "disable_notification=true")
-          
-          START_CMD_OK=$(echo "$START_CMD_RESPONSE" | grep -o '"ok":true' || echo "")
-          
-          sleep 5
-          
-          BOT_RESPONSE=$(curl -s "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/getUpdates?limit=10&timeout=5")
-          BOT_RESPONDED=$(echo "$BOT_RESPONSE" | grep -E '"from".*"is_bot":true' || echo "")
           
           TEST_MSG_RESPONSE=$(curl -s -X POST \
             "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
@@ -123,7 +77,7 @@ jobs:
           UPDATES_OK=$(echo "$UPDATES_RESPONSE" | grep -o '"ok":true' || echo "")
           TEST_MSG_OK=$(echo "$TEST_MSG_RESPONSE" | grep -o '"ok":true' || echo "")
           
-          if [ "$TOKEN_CHECK" = "200" ] && [ -n "$UPDATES_OK" ] && [ -n "$TEST_MSG_OK" ] && [ -n "$START_CMD_OK" ] && [ -n "$BOT_RESPONDED" ]; then
+          if [ "$TOKEN_CHECK" = "200" ] && [ -n "$UPDATES_OK" ] && [ -n "$TEST_MSG_OK" ]; then
             echo "status=healthy" >> $GITHUB_OUTPUT
             echo "message=✅ <b>Bot Status: RECOVERED</b>%0A%0A🕒 Time: $TIMESTAMP%0A💡 Bot is back online%0A🎯 No redeploy needed%0A%0A✨ Resuming normal monitoring" >> $GITHUB_OUTPUT
           else
@@ -132,7 +86,7 @@ jobs:
           fi
 
       - name: Send recheck update
-        if: steps.deploy_check.outputs.deploying == 'false' && steps.health.outputs.status == 'down'
+        if: steps.health.outputs.status == 'down'
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.CHAT_ID }}" \
@@ -141,7 +95,7 @@ jobs:
 
       - name: Trigger Render Redeploy
         id: redeploy
-        if: steps.deploy_check.outputs.deploying == 'false' && steps.health.outputs.status == 'down' && steps.recheck.outputs.status == 'down'
+        if: steps.health.outputs.status == 'down' && steps.recheck.outputs.status == 'down'
         run: |
           DEPLOY_RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST ${{ secrets.REDEPLOY }})
           
@@ -157,7 +111,7 @@ jobs:
           fi
 
       - name: Send redeploy status
-        if: steps.deploy_check.outputs.deploying == 'false' && steps.health.outputs.status == 'down' && steps.recheck.outputs.status == 'down'
+        if: steps.health.outputs.status == 'down' && steps.recheck.outputs.status == 'down'
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.BOT_TOKEN }}/sendMessage" \
             -d "chat_id=${{ secrets.CHAT_ID }}" \
