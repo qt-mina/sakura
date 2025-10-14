@@ -164,13 +164,11 @@ async def get_groups():
         logger.error(f"❌ Failed to get groups from database: {e}")
         return list(state.group_ids)
 
-def save_purchase(user_id: int, username: str = None, first_name: str = None, last_name: str = None, amount: int = 0, charge_id: str = None):
-    """Save purchase to database asynchronously (fire and forget)"""
+async def save_purchase(user_id: int, username: str = None, first_name: str = None, last_name: str = None, amount: int = 0, charge_id: str = None):
+    """Saves a purchase to the database asynchronously."""
     if not state.db_pool:
+        logger.warning("⚠️ Database pool not available, cannot save purchase.")
         return
-    asyncio.create_task(_save_purchase(user_id, username, first_name, last_name, amount, charge_id))
-
-async def _save_purchase(user_id: int, username: str, first_name: str, last_name: str, amount: int, charge_id: str):
     try:
         async with state.db_pool.acquire() as conn:
             await conn.execute("""
