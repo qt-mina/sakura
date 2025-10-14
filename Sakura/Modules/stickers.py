@@ -78,6 +78,11 @@ async def send_cached_sticker(client: Client, chat_id: int, sticker_data: dict, 
         )
 
         peer = await client.resolve_peer(chat_id)
+        reply_to = None
+        if reply_to_message_id:
+            reply_to = raw.types.InputReplyToMessage(
+                reply_to_msg_id=reply_to_message_id
+            )
 
         await client.invoke(
             raw.functions.messages.SendMedia(
@@ -85,7 +90,7 @@ async def send_cached_sticker(client: Client, chat_id: int, sticker_data: dict, 
                 media=sticker_input,
                 message="",
                 random_id=client.rnd_id(),
-                reply_to_msg_id=reply_to_message_id
+                reply_to=reply_to
             )
         )
         log_action("INFO", "✅ Sent sticker response", user_info)
