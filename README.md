@@ -62,6 +62,11 @@ Whether you're looking to:
 
 ```
 sakurachat-bot/
+├── .github/                 # GitHub workflows and configurations
+│   ├── README.md            # General information about the GitHub setup
+│   └── workflows/           # CI/CD workflows
+│       ├── README.md        # Information about the workflows
+│       └── redeploy.yml     # Workflow for redeployment
 ├── Sakura/                  # Core bot package
 │   ├── __main__.py          # Main entry point
 │   ├── __init__.py          # Package initialization
@@ -123,6 +128,7 @@ sakurachat-bot/
 ├── requirements.txt         # Dependencies
 ├── Dockerfile               # Docker container configuration
 ├── Procfile                 # Process file for deployment
+├── example.env              # Example environment variables
 └── README.md                # Project documentation
 ```
 
