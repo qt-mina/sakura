@@ -4,8 +4,12 @@ import signal
 import uvloop
 from pyrogram import Client
 from pyrogram.errors import FloodWait
-from Sakura.Core.config import API_ID, API_HASH, BOT_TOKEN, DATABASE_URL, OWNER_ID
+from Sakura.Core.config import (
+    API_ID, API_HASH, BOT_TOKEN, DATABASE_URL, OWNER_ID,
+    SAKURA_STICKERS_PACK, START_STICKERS_PACK, PAYMENT_STICKERS_PACK
+)
 from Sakura.Core.logging import logger
+from Sakura.Modules.stickers import load_stickers
 from Sakura.Core.server import start_server_thread
 from Sakura.Core.utils import validate_config
 from Sakura.Database.database import connect_database, close_database
@@ -40,8 +44,22 @@ async def post_init(app: Client):
         logger.error("❌ Database initialization failed. Bot will continue without persistence.")
 
     await setup_commands(app)
+
+    if valkey_success:
+        logger.info("📦 Loading all sticker packs into cache...")
+        await load_all_stickers(app)
+
     state.cleanup_task = asyncio.create_task(cleanup_conversations())
     logger.info("🌸 Sakura Bot initialization completed!")
+
+
+async def load_all_stickers(app: Client):
+    """Load all sticker packs into the cache."""
+    await asyncio.gather(
+        load_stickers(app, SAKURA_STICKERS_PACK, "stickers:sakura"),
+        load_stickers(app, START_STICKERS_PACK, "stickers:start"),
+        load_stickers(app, PAYMENT_STICKERS_PACK, "stickers:payment")
+    )
 
 
 async def post_shutdown(app: Client):
