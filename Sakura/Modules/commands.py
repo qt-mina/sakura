@@ -11,7 +11,7 @@ from Sakura.Modules.reactions import EMOJI_REACT
 from Sakura.Modules.effects import animate_reaction, add_reaction, photo_effect
 from Sakura.Modules.typing import sticker_action, photo_action
 from Sakura.Database.constants import SAKURA_IMAGES
-from Sakura.Modules.stickers import get_random_sticker
+from Sakura.Modules.stickers import get_random_sticker, send_cached_sticker
 from Sakura.Modules.keyboards import start_menu, help_menu, broadcast_menu
 from Sakura.Core.config import PING_LINK, OWNER_ID, COMMAND_PREFIXES
 from Sakura.Database.database import get_users, get_groups
@@ -49,10 +49,9 @@ async def start_command_handler(client: Client, message: Message) -> None:
         if message.chat.type == ChatType.PRIVATE:
             user_info = fetch_user(message)
             await sticker_action(client, message.chat.id, user_info)
-            random_sticker_data = await get_random_sticker("stickers:start")
+            random_sticker_data = await get_random_sticker("stickers:start", user_info)
             if random_sticker_data:
-                await client.send_sticker(chat_id=message.chat.id, sticker=random_sticker_data["id"])
-                log_action("INFO", "✅ Start sticker sent successfully", user_info)
+                await send_cached_sticker(client, message.chat.id, random_sticker_data, user_info)
 
         user_info = fetch_user(message)
         await photo_action(client, message.chat.id, user_info)

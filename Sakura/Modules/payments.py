@@ -15,7 +15,7 @@ from Sakura.Modules.reactions import EMOJI_REACT
 from Sakura.Modules.typing import send_typing
 from Sakura.Modules.messages import INVOICE_DESCRIPTIONS, THANK_YOU_MESSAGES, REFUND_MESSAGES
 from Sakura.Database.database import save_purchase, get_purchases
-from Sakura.Modules.stickers import get_random_sticker
+from Sakura.Modules.stickers import get_random_sticker, send_cached_sticker
 from Sakura import state
 
 @Client.on_message(filters.command("meow", prefixes=COMMAND_PREFIXES))
@@ -214,9 +214,9 @@ async def successful_payment_handler(client: Client, message: Message) -> None:
     else:
         log_action("INFO", f"✅ Processing payment of {amount} stars (no refund)", user_info)
         await asyncio.sleep(4)
-        random_sticker_data = await get_random_sticker("stickers:payment")
+        random_sticker_data = await get_random_sticker("stickers:payment", user_info)
         if random_sticker_data:
-            await client.send_sticker(chat_id=message.chat.id, sticker=random_sticker_data["id"])
+            await send_cached_sticker(client, message.chat.id, random_sticker_data, user_info)
         await asyncio.sleep(4)
         keyboard = [[InlineKeyboardButton("Buy flowers again 🌸", callback_data="get_flowers_again")]]
         reply_markup = InlineKeyboardMarkup(keyboard)
