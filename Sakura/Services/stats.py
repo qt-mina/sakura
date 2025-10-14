@@ -68,36 +68,25 @@ async def send_stats(chat_id: int, client: Client, is_refresh: bool = False, mes
 
         if is_refresh:
             return stats_message, reply_markup
+        
+        # Send the stats message
+        if message and message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
+            # Reply to the message in groups
+            await message.reply_text(
+                text=stats_message,
+                parse_mode=ParseMode.HTML,
+                reply_markup=reply_markup,
+                link_preview_options=LinkPreviewOptions(is_disabled=True)
+            )
         else:
-            # Check if it's a group or private chat
-            if message:
-                # If message object is provided, check chat type
-                if message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
-                    # Reply to the message in groups
-                    await message.reply_text(
-                        text=stats_message,
-                        parse_mode=ParseMode.HTML,
-                        reply_markup=reply_markup,
-                        link_preview_options=LinkPreviewOptions(is_disabled=True)
-                    )
-                else:
-                    # Send normally in private chats
-                    await client.send_message(
-                        chat_id=chat_id,
-                        text=stats_message,
-                        parse_mode=ParseMode.HTML,
-                        reply_markup=reply_markup,
-                        link_preview_options=LinkPreviewOptions(is_disabled=True)
-                    )
-            else:
-                # Fallback: send normally if no message object
-                await client.send_message(
-                    chat_id=chat_id,
-                    text=stats_message,
-                    parse_mode=ParseMode.HTML,
-                    reply_markup=reply_markup,
-                    link_preview_options=LinkPreviewOptions(is_disabled=True)
-                )
+            # Send normally in private chats or if no message object
+            await client.send_message(
+                chat_id=chat_id,
+                text=stats_message,
+                parse_mode=ParseMode.HTML,
+                reply_markup=reply_markup,
+                link_preview_options=LinkPreviewOptions(is_disabled=True)
+            )
 
     except Exception as e:
         log_action("ERROR", f"❌ Error generating stats message: {e}", {})
