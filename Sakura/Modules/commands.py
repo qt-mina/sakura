@@ -165,7 +165,7 @@ async def stats_command_handler(client: Client, message: Message) -> None:
     try:
         user_info = fetch_user(message)
         log_action("INFO", "📊 /stats command received from owner", user_info)
-        await send_stats(message.chat.id, client, is_refresh=False, message=message)
+        await send_stats(message.chat.id, client, is_refresh=False)
         log_action("INFO", "✅ Bot statistics sent to owner", user_info)
     except Exception as e:
         user_info = fetch_user(message)
