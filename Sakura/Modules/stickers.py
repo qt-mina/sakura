@@ -18,8 +18,9 @@ def parse_link(link: str) -> str:
 
 async def load_stickers(client: Client, pack_link: str, cache_key: str):
     """Load stickers from a pack and cache them in Valkey."""
+    system_user_info = {"user_id": "System", "username": "Startup", "chat_id": "Logger"}
     if not state.valkey_client:
-        log_action("ERROR", "Valkey client not available for sticker loading.")
+        log_action("ERROR", "Valkey client not available for sticker loading.", system_user_info)
         return
 
     try:
@@ -42,25 +43,55 @@ async def load_stickers(client: Client, pack_link: str, cache_key: str):
         ]
 
         await state.valkey_client.set(cache_key, orjson.dumps(stickers_to_cache))
-        log_action("INFO", f"✅ Loaded and cached {len(stickers_to_cache)} stickers from {pack_name}.")
+        log_action("INFO", f"✅ Loaded and cached {len(stickers_to_cache)} stickers from {pack_name}.", system_user_info)
 
     except Exception as e:
-        log_action("ERROR", f"❌ Failed to load/cache sticker pack {pack_link}: {e}")
+        log_action("ERROR", f"❌ Failed to load/cache sticker pack {pack_link}: {e}", system_user_info)
 
 
-async def get_random_sticker(cache_key: str) -> dict | None:
+async def get_random_sticker(cache_key: str, user_info: dict) -> dict | None:
     """Get a random sticker from the Valkey cache."""
     if not state.valkey_client:
-        log_action("ERROR", "Valkey client not available for getting sticker.")
+        log_action("ERROR", "Valkey client not available for getting sticker.", user_info)
         return None
 
     cached_stickers = await state.valkey_client.get(cache_key)
     if not cached_stickers:
-        log_action("WARNING", f"⚠️ No stickers found in cache for key: {cache_key}")
+        log_action("WARNING", f"⚠️ No stickers found in cache for key: {cache_key}", user_info)
         return None
 
     sticker_list = orjson.loads(cached_stickers)
     return random.choice(sticker_list) if sticker_list else None
+
+
+async def send_cached_sticker(client: Client, chat_id: int, sticker_data: dict, user_info: dict, reply_to_message_id: int | None = None):
+    """Constructs and sends a sticker from cached data using raw API."""
+    try:
+        log_action("DEBUG", f"📤 Sending random sticker: {sticker_data['id']}", user_info)
+
+        sticker_input = raw.types.InputMediaDocument(
+            id=raw.types.InputDocument(
+                id=sticker_data["id"],
+                access_hash=sticker_data["access_hash"],
+                file_reference=base64.b64decode(sticker_data["file_reference"])
+            )
+        )
+
+        peer = await client.resolve_peer(chat_id)
+
+        await client.invoke(
+            raw.functions.messages.SendMedia(
+                peer=peer,
+                media=sticker_input,
+                message="",
+                random_id=client.rnd_id(),
+                reply_to_msg_id=reply_to_message_id
+            )
+        )
+        log_action("INFO", "✅ Sent sticker response", user_info)
+
+    except Exception as e:
+        log_action("ERROR", f"❌ Failed to send sticker: {e}", user_info)
 
 
 async def handle_sticker(client: Client, message: Message) -> None:
@@ -70,42 +101,15 @@ async def handle_sticker(client: Client, message: Message) -> None:
 
     await sticker_action(client, message.chat.id, user_info)
 
-    random_sticker_data = await get_random_sticker("stickers:sakura")
+    random_sticker_data = await get_random_sticker("stickers:sakura", user_info)
     if not random_sticker_data:
-        log_action("ERROR", "No sticker found to send.")
+        log_action("ERROR", "No sticker found to send.", user_info)
         return
 
-    chat_type = message.chat.type
-    log_action("DEBUG", f"📤 Sending random sticker: {random_sticker_data['id']}", user_info)
+    reply_id = None
+    if (message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP] and
+        message.reply_to_message and
+        message.reply_to_message.from_user.id == client.me.id):
+        reply_id = message.reply_to_message.id
 
-    sticker_input = raw.types.InputMediaDocument(
-        id=raw.types.InputDocument(
-            id=random_sticker_data["id"],
-            access_hash=random_sticker_data["access_hash"],
-            file_reference=base64.b64decode(random_sticker_data["file_reference"])
-        )
-    )
-
-    try:
-        if (chat_type in [ChatType.GROUP, ChatType.SUPERGROUP] and
-            message.reply_to_message and
-            message.reply_to_message.from_user.id == client.me.id):
-            await client.send_sticker(
-                chat_id=message.chat.id,
-                sticker=random_sticker_data["id"],
-                reply_to_message_id=message.reply_to_message.id
-            )
-            log_action("INFO", "✅ Replied to user's sticker in group", user_info)
-        else:
-            peer = await client.resolve_peer(message.chat.id)
-            await client.invoke(
-                raw.functions.messages.SendMedia(
-                    peer=peer,
-                    media=sticker_input,
-                    message="",
-                    random_id=client.rnd_id()
-                )
-            )
-            log_action("INFO", "✅ Sent sticker response", user_info)
-    except Exception as e:
-        log_action("ERROR", f"❌ Failed to send sticker: {e}", user_info)
+    await send_cached_sticker(client, message.chat.id, random_sticker_data, user_info, reply_to_message_id=reply_id)
