@@ -19,7 +19,7 @@ def parse_link(link: str) -> str:
 async def load_stickers(client: Client, pack_link: str, cache_key: str):
     """Load stickers from a pack and cache them in Valkey."""
     if not state.valkey_client:
-        log_action("ERROR", "Valkey client not available for sticker loading.")
+        logger.error("😪 Valkey client not available for sticker loading.")
         return
 
     try:
@@ -42,10 +42,10 @@ async def load_stickers(client: Client, pack_link: str, cache_key: str):
         ]
 
         await state.valkey_client.set(cache_key, orjson.dumps(stickers_to_cache))
-        log_action("INFO", f"✅ Loaded and cached {len(stickers_to_cache)} stickers from {pack_name}.")
+        logger.info("✅ Loaded and cached {len(stickers_to_cache)} stickers from {pack_name}.")
 
     except Exception as e:
-        log_action("ERROR", f"❌ Failed to load/cache sticker pack {pack_link}: {e}")
+        logger.error("❌ Failed to load/cache sticker pack {pack_link}: {e}")
 
 
 async def get_random_sticker(cache_key: str, user_info: dict) -> dict | None:
