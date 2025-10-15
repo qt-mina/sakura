@@ -41,7 +41,7 @@ async def handle_messages(client: Client, message: Message) -> None:
         chat_type = message.chat.type.name.lower()
         
         # Start typing indicator immediately
-        asyncio.create_task(send_typing(client, message.chat.id, user_info))
+        #asyncio.create_task(send_typing(client, message.chat.id, user_info))
 
         # Handle broadcast mode (only for owner)
         if message.from_user and message.from_user.id == OWNER_ID and message.from_user.id in state.broadcast_mode:
