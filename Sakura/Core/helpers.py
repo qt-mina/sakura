@@ -2,6 +2,7 @@
 import random
 import time
 from typing import Dict
+from pyrogram import Client
 from pyrogram.types import Message, User
 from Sakura.Core.logging import logger
 from Sakura.Modules.messages import RESPONSES, ERROR
@@ -52,15 +53,39 @@ def log_action(level: str, message: str, user_info: Dict[str, any]) -> None:
     else:
         logger.info(full_message)
 
-def should_reply(message: Message, bot_id: int) -> bool:
-    """Determine if bot should respond in group chat"""
+def should_reply(message: Message, bot_id: int, client: Client = None) -> bool:
+    """Check if bot should reply to a group message (Pyrogram way)"""
+    
+    # Check if replying to bot's message
+    if message.reply_to_message and message.reply_to_message.from_user:
+        if message.reply_to_message.from_user.id == bot_id:
+            return True
+    
+    # Check for mentions in entities
+    if message.entities:
+        for entity in message.entities:
+            if entity.type == "mention" or entity.type == "text_mention":
+                return True
+    
+    # Check for mentions in caption entities (for media)
+    if message.caption_entities:
+        for entity in message.caption_entities:
+            if entity.type == "mention" or entity.type == "text_mention":
+                return True
+    
+    # Pyrogram fallback: Check text/caption directly for @username mention
+    # This catches cases where entities aren't parsed (like channel forwards)
+    if client and client.me and client.me.username:
+        text = message.text or message.caption or ""
+        bot_mention = f"@{client.me.username}".lower()
+        if bot_mention in text.lower():
+            return True
+    
+    # Also check for "sakura" keyword (original behavior)
     user_message = message.text or message.caption or ""
     if "sakura" in user_message.lower():
         return True
-    if (message.reply_to_message and
-        message.reply_to_message.from_user and
-        message.reply_to_message.from_user.id == bot_id):
-        return True
+    
     return False
 
 def get_mention(user: User) -> str:
