@@ -3,6 +3,7 @@ import asyncio
 from io import BytesIO
 from elevenlabs.client import AsyncElevenLabs
 from elevenlabs.core import ApiError
+from pydub import AudioSegment
 from Sakura.Core.config import ELEVENLABS_API_KEY, VOICE_ID
 from Sakura.Core.logging import logger
 
@@ -10,11 +11,11 @@ client = AsyncElevenLabs(api_key=ELEVENLABS_API_KEY)
 
 async def generate_voice(text: str) -> BytesIO | None:
     """
-    Generates voice from text using the ElevenLabs API.
+    Generates voice from text using the ElevenLabs API and converts to OGG format.
     Args:
         text: The text to convert to speech.
     Returns:
-        The audio data as a BytesIO object, or None if an error occurred.
+        The audio data as a BytesIO object in OGG format, or None if an error occurred.
     """
     if not ELEVENLABS_API_KEY:
         logger.warning("ElevenLabs API key is not configured.")
@@ -32,12 +33,17 @@ async def generate_voice(text: str) -> BytesIO | None:
         async for chunk in audio_stream:
             audio_bytes += chunk
         
-        # Convert bytes to BytesIO object with a name attribute
-        audio_file = BytesIO(audio_bytes)
-        audio_file.name = "voice.mp3"  # Give it a filename
+        # Convert MP3 bytes to OGG format
+        mp3_audio = AudioSegment.from_mp3(BytesIO(audio_bytes))
         
-        logger.info("Voice generation successful.")
-        return audio_file
+        # Export as OGG
+        ogg_buffer = BytesIO()
+        mp3_audio.export(ogg_buffer, format="ogg", codec="libopus")
+        ogg_buffer.seek(0)  # Reset buffer position to start
+        ogg_buffer.name = "voice.ogg"
+        
+        logger.info("Voice generation and conversion to OGG successful.")
+        return ogg_buffer
         
     except ApiError as e:
         logger.error(f"ElevenLabs API error: {e}")
