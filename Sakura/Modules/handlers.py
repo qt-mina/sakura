@@ -40,8 +40,7 @@ async def handle_messages(client: Client, message: Message) -> None:
         user_id = user_info["user_id"]
         chat_type = message.chat.type.name.lower()
         
-        # Start typing indicator immediately
-        #asyncio.create_task(send_typing(client, message.chat.id, user_info))
+        # REMOVED: typing indicator from here (was line 44)
 
         # Handle broadcast mode (only for owner)
         if message.from_user and message.from_user.id == OWNER_ID and message.from_user.id in state.broadcast_mode:
@@ -84,6 +83,7 @@ async def handle_messages(client: Client, message: Message) -> None:
                     log_action("INFO", "✅ Voice message sent", user_info)
                     return
             else:
+                await client.send_chat_action(chat_id=message.chat.id, action=ChatAction.TYPING)
                 await message.reply_text("I don't have a recent message to say in my voice. Please let me respond to something first!")
                 return
 
@@ -91,6 +91,9 @@ async def handle_messages(client: Client, message: Message) -> None:
             return
         if await reply_poll(client, message, user_message, user_info):
             return
+
+        # Start typing indicator before AI response generation
+        asyncio.create_task(send_typing(client, message.chat.id, user_info))
 
         # Get AI response (skip history for channel messages)
         is_channel_message = message.sender_chat and not message.from_user
