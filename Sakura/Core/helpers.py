@@ -56,21 +56,30 @@ def log_action(level: str, message: str, user_info: Dict[str, any]) -> None:
 def should_reply(message: Message, bot_id: int, client: Client = None) -> bool:
     """Check if bot should reply to a group message (Pyrogram way)"""
     
+    logger.debug(f"🔍 Checking should_reply - Message from: {message.from_user.id if message.from_user else 'None'}")
+    logger.debug(f"🔍 Forward info: forward_from_chat={message.forward_from_chat}, forward_from={message.forward_from}")
+    logger.debug(f"🔍 Text: {message.text or message.caption}")
+    logger.debug(f"🔍 Entities: {message.entities}")
+    logger.debug(f"🔍 Caption entities: {message.caption_entities}")
+    
     # Check if replying to bot's message
     if message.reply_to_message and message.reply_to_message.from_user:
         if message.reply_to_message.from_user.id == bot_id:
+            logger.debug("✅ Should reply: Reply to bot's message")
             return True
     
     # Check for mentions in entities
     if message.entities:
         for entity in message.entities:
             if entity.type == "mention" or entity.type == "text_mention":
+                logger.debug(f"✅ Should reply: Found mention entity - {entity.type}")
                 return True
     
     # Check for mentions in caption entities (for media)
     if message.caption_entities:
         for entity in message.caption_entities:
             if entity.type == "mention" or entity.type == "text_mention":
+                logger.debug(f"✅ Should reply: Found caption mention entity - {entity.type}")
                 return True
     
     # Pyrogram fallback: Check text/caption directly for @username mention
@@ -78,14 +87,18 @@ def should_reply(message: Message, bot_id: int, client: Client = None) -> bool:
     if client and client.me and client.me.username:
         text = message.text or message.caption or ""
         bot_mention = f"@{client.me.username}".lower()
+        logger.debug(f"🔍 Checking for bot mention '{bot_mention}' in text: '{text}'")
         if bot_mention in text.lower():
+            logger.debug(f"✅ Should reply: Found bot mention in text")
             return True
     
     # Also check for "sakura" keyword (original behavior)
     user_message = message.text or message.caption or ""
     if "sakura" in user_message.lower():
+        logger.debug("✅ Should reply: Found 'sakura' keyword")
         return True
     
+    logger.debug("❌ Should NOT reply: No mention/reply/keyword found")
     return False
 
 def get_mention(user: User) -> str:
