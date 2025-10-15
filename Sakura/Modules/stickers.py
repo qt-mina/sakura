@@ -111,10 +111,9 @@ async def handle_sticker(client: Client, message: Message) -> None:
         log_action("ERROR", "No sticker found to send.", user_info)
         return
 
+    # In groups/supergroups, reply to the user's sticker message
     reply_id = None
-    if (message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP] and
-        message.reply_to_message and
-        message.reply_to_message.from_user.id == client.me.id):
-        reply_id = message.reply_to_message.id
+    if message.chat.type in [ChatType.GROUP, ChatType.SUPERGROUP]:
+        reply_id = message.id
 
     await send_cached_sticker(client, message.chat.id, random_sticker_data, user_info, reply_to_message_id=reply_id)
