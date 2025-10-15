@@ -1,6 +1,7 @@
 # Sakura/__main__.py
 import asyncio
 import signal
+import os
 import uvloop
 from pyrogram import Client
 from pyrogram.errors import FloodWait
@@ -19,6 +20,10 @@ from Sakura.Chat.chat import init_client
 from Sakura import state
 from Sakura.Modules.commands import COMMANDS
 
+# Configuration constants
+MAX_RETRIES = 5
+SESSION_FILE = "sakura.session"
+
 
 async def setup_commands(app: Client) -> None:
     """Setup bot commands menu"""
@@ -30,7 +35,7 @@ async def setup_commands(app: Client) -> None:
         await asyncio.sleep(e.value)
         return await setup_commands(app)  # retry after sleep
     except Exception as e:
-        logger.error(f"Failed to set bot commands: {e}")
+        logger.error(f"😪 Failed to set bot commands: {e}")
 
 
 async def post_init(app: Client):
@@ -38,7 +43,7 @@ async def post_init(app: Client):
     valkey_success = await connect_cache()
     if not valkey_success:
         logger.warning("⚠️ Valkey initialization failed. Bot will continue with memory fallback.")
-    
+
     db_success = await connect_database()
     if not db_success:
         logger.error("❌ Database initialization failed. Bot will continue without persistence.")
@@ -65,7 +70,7 @@ async def load_all_stickers(app: Client):
 async def post_shutdown(app: Client):
     """Post shutdown tasks"""
     logger.info("🧹 Starting cleanup process...")
-    
+
     if state.cleanup_task and not state.cleanup_task.done():
         logger.info("🛑 Cancelling cleanup task...")
         state.cleanup_task.cancel()
@@ -73,13 +78,13 @@ async def post_shutdown(app: Client):
             await state.cleanup_task
         except asyncio.CancelledError:
             logger.info("✅ Cleanup task cancelled successfully")
-    
+
     logger.info("📊 Closing database connections...")
     await close_database()
-    
+
     logger.info("💾 Closing cache connections...")
     await close_cache()
-    
+
     logger.info("🌸 Sakura Bot shutdown completed!")
 
 
@@ -105,49 +110,75 @@ async def sakura() -> None:
 
     # Create an event for graceful shutdown
     shutdown_event = asyncio.Event()
-    
+
     def signal_handler(signum):
         """Handle shutdown signals"""
         signame = signal.Signals(signum).name
         logger.info(f"🛑 Received {signame} signal, initiating graceful shutdown...")
         shutdown_event.set()
-    
+
     # Register signal handlers for graceful shutdown
     loop = asyncio.get_event_loop()
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, lambda s=sig: signal_handler(s))
 
+    retry_count = 0
+
     try:
-        while True:
+        while retry_count < MAX_RETRIES:
             try:
                 logger.info("🔌 Starting Pyrogram client...")
                 await app.start()
                 await post_init(app)
                 logger.info("🌸 Sakura Bot is now online!")
                 
+                # Reset retry count on successful start
+                retry_count = 0
+
                 # Wait for shutdown signal
                 await shutdown_event.wait()
                 logger.info("🛑 Shutdown signal received, stopping bot...")
                 break
-                
+
             except FloodWait as e:
-                logger.warning(f"⏳ FloodWait triggered: Sleeping for {e.value} seconds...")
+                retry_count += 1
+                logger.warning(f"⏳ FloodWait triggered (attempt {retry_count}/{MAX_RETRIES}): Sleeping for {e.value} seconds...")
+                
+                # CRITICAL: Stop the client before retrying
+                if app.is_connected:
+                    try:
+                        await app.stop()
+                        logger.info("📡 Client stopped before retry")
+                    except Exception as stop_err:
+                        logger.error(f"❌ Error stopping client: {stop_err}")
+                
+                # Remove potentially corrupted session file
+                if os.path.exists(SESSION_FILE):
+                    try:
+                        os.remove(SESSION_FILE)
+                        logger.info(f"🗑️ Removed session file: {SESSION_FILE}")
+                    except Exception as remove_err:
+                        logger.error(f"❌ Failed to remove session: {remove_err}")
+                
                 await asyncio.sleep(e.value)
                 logger.info("🔄 Retrying after FloodWait...")
                 continue
-                
+
             except KeyboardInterrupt:
                 logger.info("🛑 Bot stopped by user (KeyboardInterrupt).")
                 break
-                
+
             except Exception as e:
                 logger.error(f"💥 An unexpected error occurred: {e}", exc_info=True)
                 break
-                
+
+        if retry_count >= MAX_RETRIES:
+            logger.error(f"❌ Maximum retry attempts ({MAX_RETRIES}) reached. Shutting down.")
+
     finally:
         logger.info("🔌 Shutting down Sakura...")
         await post_shutdown(app)
-        
+
         if app.is_connected:
             logger.info("📡 Stopping Pyrogram client...")
             try:
@@ -155,7 +186,7 @@ async def sakura() -> None:
                 logger.info("✅ Pyrogram client stopped successfully")
             except Exception as e:
                 logger.error(f"❌ Error stopping Pyrogram client: {e}")
-        
+
         logger.info("🌸 Sakura Bot has been shut down gracefully.")
 
 
