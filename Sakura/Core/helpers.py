@@ -12,6 +12,29 @@ from Sakura.Core.config import SESSION_TTL
 def fetch_user(msg: Message) -> Dict[str, any]:
     """Extract user and chat information from message"""
     logger.debug("🔍 Extracting user information from message")
+    
+    # Handle channel messages (no from_user, only sender_chat)
+    if msg.sender_chat and not msg.from_user:
+        c = msg.chat
+        info = {
+            "user_id": msg.sender_chat.id,
+            "username": msg.sender_chat.username,
+            "full_name": msg.sender_chat.title or "Channel",
+            "first_name": msg.sender_chat.title or "Channel",
+            "last_name": None,
+            "chat_id": c.id,
+            "chat_type": str(c.type).split('.')[-1].lower(),
+            "chat_title": c.title or c.first_name or "",
+            "chat_username": f"@{c.username}" if c.username else "No Username",
+            "chat_link": f"https://t.me/{c.username}" if c.username else "No Link",
+        }
+        logger.info(
+            f"📑 Channel message extracted: {info['full_name']} (@{info['username']}) "
+            f"[ID: {info['user_id']}] in {info['chat_title']} [{info['chat_id']}] {info['chat_link']}"
+        )
+        return info
+    
+    # Handle regular user messages
     u = msg.from_user
     c = msg.chat
     info = {
