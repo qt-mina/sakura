@@ -37,10 +37,9 @@ async def handle_messages(client: Client, message: Message) -> None:
             return
 
         user_info = fetch_user(message)
-        user_id = user_info["user_id"]  # Use from user_info instead of message.from_user.id
+        user_id = user_info["user_id"]
         chat_type = message.chat.type.name.lower()
-        log_action("DEBUG", f"📨 Processing message in {chat_type}", user_info)
-
+        
         # Start typing indicator immediately
         asyncio.create_task(send_typing(client, message.chat.id, user_info))
 
@@ -52,7 +51,6 @@ async def handle_messages(client: Client, message: Message) -> None:
             return
 
         if chat_type in ['group', 'supergroup'] and not should_reply(message, client.me.id, client):
-            log_action("DEBUG", "🚫 Not responding to group message (no mention/reply)", user_info)
             return
 
         if await check_limit(user_id, user_info["chat_id"]):
@@ -73,20 +71,19 @@ async def handle_messages(client: Client, message: Message) -> None:
 
         # Default to text-based handling
         user_message = message.text or message.caption or "Media message"
-        log_action("INFO", f"💬 Text/media message received: '{user_message}'", user_info)
+        log_action("INFO", f"💬 Message: '{user_message}'", user_info)
 
         if "in your voice" in user_message.lower():
             last_bot_message = await get_last_message(user_id)
             if last_bot_message:
-                log_action("INFO", "🎤 User requested last message in voice", user_info)
+                log_action("INFO", "🎤 Sending voice message", user_info)
                 await client.send_chat_action(chat_id=message.chat.id, action=ChatAction.RECORD_AUDIO)
                 voice_data = await generate_voice(last_bot_message)
                 if voice_data:
                     await message.reply_voice(voice=voice_data)
-                    log_action("INFO", "✅ On-demand voice message sent successfully", user_info)
+                    log_action("INFO", "✅ Voice message sent", user_info)
                     return
             else:
-                log_action("WARNING", "🤷‍♀️ No last message found to send in voice", user_info)
                 await message.reply_text("I don't have a recent message to say in my voice. Please let me respond to something first!")
                 return
 
@@ -97,17 +94,11 @@ async def handle_messages(client: Client, message: Message) -> None:
 
         # Get AI response (skip history for channel messages)
         is_channel_message = message.sender_chat and not message.from_user
-        if is_channel_message:
-            # For channel messages, get response without history tracking
-            from Sakura.Chat.chat import get_response as get_ai_response
-            ai_response = await get_ai_response(user_message, user_id, user_info)
-        else:
-            # For regular user messages, use full history
-            ai_response = await get_response(user_message, user_id, user_info)
+        ai_response = await get_response(user_message, user_id, user_info, save_history=not is_channel_message)
 
         # Validate response before proceeding
         if not ai_response or not isinstance(ai_response, str):
-            log_action("ERROR", f"❌ Invalid AI response received: {ai_response}", user_info)
+            log_action("ERROR", f"❌ Invalid AI response", user_info)
             await message.reply_text(get_error())
             return
 
@@ -116,32 +107,23 @@ async def handle_messages(client: Client, message: Message) -> None:
             try:
                 await set_last_message(user_id, ai_response)
             except Exception as cache_error:
-                log_action("WARNING", f"⚠️ Failed to cache message: {cache_error}", user_info)
-                # Continue anyway - caching failure shouldn't prevent response
-
-        log_action("DEBUG", f"📤 Sending response: '{ai_response}'", user_info)
+                log_action("WARNING", f"⚠️ Failed to cache message", user_info)
 
         # Try to send as voice (10% chance)
         voice_data = None
-        if random.random() < 0.1:  # 10% chance
-            log_action("INFO", "🎤 Attempting to send response as voice (10% chance)", user_info)
+        if random.random() < 0.1:
             await client.send_chat_action(chat_id=message.chat.id, action=ChatAction.RECORD_AUDIO)
             voice_data = await generate_voice(ai_response)
 
         # Send response (voice or text)
         if voice_data:
             await message.reply_voice(voice=voice_data)
-            log_action("INFO", "✅ Voice message response sent successfully", user_info)
+            log_action("INFO", "✅ Voice response sent", user_info)
         else:
             await message.reply_text(ai_response)
-            log_action("INFO", "✅ Text message response sent successfully", user_info)
+            log_action("INFO", "✅ Response sent", user_info)
 
         await log_response(user_id)
-        
-        if not is_channel_message:
-            log_action("DEBUG", "⏰ Updated user response time", user_info)
-        else:
-            log_action("DEBUG", "⏰ Skipped response time update for channel message", user_info)
 
     except Exception as e:
         # Safely fetch user info for error logging
@@ -161,7 +143,7 @@ async def handle_messages(client: Client, message: Message) -> None:
                 "chat_link": "Unknown"
             }
         
-        log_action("ERROR", f"❌ Error handling message: {e}", user_info)
+        log_action("ERROR", f"❌ Error: {e}", user_info)
         try:
             await message.reply_text(get_error())
         except Exception as reply_error:
