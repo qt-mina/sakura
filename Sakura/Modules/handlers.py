@@ -95,8 +95,15 @@ async def handle_messages(client: Client, message: Message) -> None:
         if await reply_poll(client, message, user_message, user_info):
             return
 
-        # Get AI response
-        ai_response = await get_response(user_message, user_id, user_info)
+        # Get AI response (skip history for channel messages)
+        is_channel_message = message.sender_chat and not message.from_user
+        if is_channel_message:
+            # For channel messages, get response without history tracking
+            from Sakura.Chat.chat import get_response as get_ai_response
+            ai_response = await get_ai_response(user_message, user_id, user_info)
+        else:
+            # For regular user messages, use full history
+            ai_response = await get_response(user_message, user_id, user_info)
 
         # Validate response before proceeding
         if not ai_response or not isinstance(ai_response, str):
@@ -104,12 +111,13 @@ async def handle_messages(client: Client, message: Message) -> None:
             await message.reply_text(get_error())
             return
 
-        # Cache the valid response (wrapped in try-except to prevent cache failures from blocking responses)
-        try:
-            await set_last_message(user_id, ai_response)
-        except Exception as cache_error:
-            log_action("WARNING", f"⚠️ Failed to cache message: {cache_error}", user_info)
-            # Continue anyway - caching failure shouldn't prevent response
+        # Cache the valid response (skip for channel messages)
+        if not is_channel_message:
+            try:
+                await set_last_message(user_id, ai_response)
+            except Exception as cache_error:
+                log_action("WARNING", f"⚠️ Failed to cache message: {cache_error}", user_info)
+                # Continue anyway - caching failure shouldn't prevent response
 
         log_action("DEBUG", f"📤 Sending response: '{ai_response}'", user_info)
 
@@ -129,7 +137,11 @@ async def handle_messages(client: Client, message: Message) -> None:
             log_action("INFO", "✅ Text message response sent successfully", user_info)
 
         await log_response(user_id)
-        log_action("DEBUG", "⏰ Updated user response time", user_info)
+        
+        if not is_channel_message:
+            log_action("DEBUG", "⏰ Updated user response time", user_info)
+        else:
+            log_action("DEBUG", "⏰ Skipped response time update for channel message", user_info)
 
     except Exception as e:
         # Safely fetch user info for error logging
