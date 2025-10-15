@@ -45,7 +45,7 @@ async def handle_messages(client: Client, message: Message) -> None:
             del state.broadcast_mode[user_id]
             return
 
-        if chat_type in ['group', 'supergroup'] and not should_reply(message, client.me.id):
+        if chat_type in ['group', 'supergroup'] and not should_reply(message, client.me.id, client):
             log_action("DEBUG", "🚫 Not responding to group message (no mention/reply)", user_info)
             return
 
