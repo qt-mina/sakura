@@ -23,7 +23,7 @@ from Sakura.Services.tracking import track_user
 
 @Client.on_message(
     (filters.text | filters.sticker | filters.voice | filters.video_note |
-     filters.photo | filters.document | filters.poll) & ~filters.regex(r"^/")
+     filters.photo | filters.document | filters.poll | filters.animation) & ~filters.regex(r"^/")
 )
 async def handle_messages(client: Client, message: Message) -> None:
     """Handle all types of messages"""
@@ -68,7 +68,7 @@ async def handle_messages(client: Client, message: Message) -> None:
             await handle_poll(client, message)
             return
 
-        # Default to text-based handling
+        # Default to text-based handling (including GIFs/animations)
         user_message = message.text or message.caption or "Media message"
         log_action("INFO", f"💬 Message: '{user_message}'", user_info)
 
