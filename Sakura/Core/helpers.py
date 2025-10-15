@@ -80,7 +80,7 @@ def should_reply(message: Message, bot_id: int, client: Client = None) -> bool:
     """Check if bot should reply to a group message (Pyrogram way)"""
     
     logger.debug(f"🔍 Checking should_reply - Message from: {message.from_user.id if message.from_user else 'None'}")
-    logger.debug(f"🔍 Forward info: forward_from_chat={message.forward_from_chat}, forward_from={message.forward_from}")
+    logger.debug(f"🔍 Sender chat: {message.sender_chat}")
     logger.debug(f"🔍 Text: {message.text or message.caption}")
     logger.debug(f"🔍 Entities: {message.entities}")
     logger.debug(f"🔍 Caption entities: {message.caption_entities}")
