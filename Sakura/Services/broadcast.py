@@ -2,8 +2,8 @@
 import asyncio
 from pyrogram import Client
 from pyrogram.types import Message
-from pyrogram.enums import ParseMode
-from pyrogram.errors import UserIsBlocked, PeerIdInvalid, ChatAdminRequired, FloodWait
+from pyrogram.enums import ParseMode, MessageOriginType
+from pyrogram.errors import UserIsBlocked, PeerIdInvalid, ChatAdminRequired, FloodWait, UserIsBot
 from Sakura.Core.helpers import log_action
 from Sakura.Database.database import get_users, get_groups, remove_user, remove_group
 from Sakura.Modules.messages import BROADCAST_MESSAGES
@@ -31,7 +31,8 @@ async def execute_broadcast(message: Message, client: Client, target_type: str, 
             log_action("WARNING", f"⚠️ No {target_name} found for broadcast", user_info)
             return
 
-        is_forward = message.forward_from or message.forward_from_chat
+        # Use the new forward_origin property instead of deprecated ones
+        is_forward = message.forward_origin is not None
         broadcast_method = "forward" if is_forward else "copy"
         log_action("INFO", f"📤 Using {broadcast_method} method for broadcast", user_info)
 
@@ -65,12 +66,14 @@ async def execute_broadcast(message: Message, client: Client, target_type: str, 
                 else:
                     await message.copy(chat_id=target_id)
                 broadcast_count += 1
-            except (UserIsBlocked, PeerIdInvalid):
+            except (UserIsBlocked, PeerIdInvalid, UserIsBot):
                 failed_count += 1
                 if target_name == "users":
                     await remove_user(target_id)
+                    log_action("DEBUG", f"🗑️ Removed inaccessible user: {target_id}", user_info)
                 elif target_name == "groups":
                     await remove_group(target_id)
+                    log_action("DEBUG", f"🗑️ Removed inaccessible group: {target_id}", user_info)
             except (ChatAdminRequired, Exception) as e:
                 failed_count += 1
                 log_action("ERROR", f"❌ Broadcast failed for {target_id}: {e}", user_info)
