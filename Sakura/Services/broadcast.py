@@ -3,7 +3,7 @@ import asyncio
 from pyrogram import Client
 from pyrogram.types import Message
 from pyrogram.enums import ParseMode, MessageOriginType
-from pyrogram.errors import UserIsBlocked, PeerIdInvalid, ChatAdminRequired, FloodWait, UserIsBot
+from pyrogram.errors import UserIsBlocked, PeerIdInvalid, ChatAdminRequired, FloodWait, UserIsBot, ChatRestricted
 from Sakura.Core.helpers import log_action
 from Sakura.Database.database import get_users, get_groups, remove_user, remove_group
 from Sakura.Modules.messages import BROADCAST_MESSAGES
@@ -66,14 +66,14 @@ async def execute_broadcast(message: Message, client: Client, target_type: str, 
                 else:
                     await message.copy(chat_id=target_id)
                 broadcast_count += 1
-            except (UserIsBlocked, PeerIdInvalid, UserIsBot):
+            except (UserIsBlocked, PeerIdInvalid, UserIsBot, ChatRestricted):
                 failed_count += 1
                 if target_name == "users":
                     await remove_user(target_id)
                     log_action("DEBUG", f"🗑️ Removed inaccessible user: {target_id}", user_info)
                 elif target_name == "groups":
                     await remove_group(target_id)
-                    log_action("DEBUG", f"🗑️ Removed inaccessible group: {target_id}", user_info)
+                    log_action("DEBUG", f"🗑️ Removed inaccessible/restricted group: {target_id}", user_info)
             except (ChatAdminRequired, Exception) as e:
                 failed_count += 1
                 log_action("ERROR", f"❌ Broadcast failed for {target_id}: {e}", user_info)
