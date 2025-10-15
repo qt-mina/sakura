@@ -28,21 +28,27 @@ from Sakura.Services.tracking import track_user
 async def handle_messages(client: Client, message: Message) -> None:
     """Handle all types of messages"""
     try:
+        # Skip self messages (but allow channel messages)
         if message.from_user and message.from_user.is_self:
             return
 
+        # Skip if no from_user AND no sender_chat (anonymous/deleted accounts)
+        if not message.from_user and not message.sender_chat:
+            return
+
         user_info = fetch_user(message)
-        user_id = message.from_user.id
+        user_id = user_info["user_id"]  # Use from user_info instead of message.from_user.id
         chat_type = message.chat.type.name.lower()
         log_action("DEBUG", f"📨 Processing message in {chat_type}", user_info)
 
         # Start typing indicator immediately
         asyncio.create_task(send_typing(client, message.chat.id, user_info))
 
-        if user_id == OWNER_ID and user_id in state.broadcast_mode:
-            log_action("INFO", f"📢 Executing broadcast to {state.broadcast_mode[user_id]}", user_info)
-            await execute_broadcast(message, client, state.broadcast_mode[user_id], user_info)
-            del state.broadcast_mode[user_id]
+        # Handle broadcast mode (only for owner)
+        if message.from_user and message.from_user.id == OWNER_ID and message.from_user.id in state.broadcast_mode:
+            log_action("INFO", f"📢 Executing broadcast to {state.broadcast_mode[message.from_user.id]}", user_info)
+            await execute_broadcast(message, client, state.broadcast_mode[message.from_user.id], user_info)
+            del state.broadcast_mode[message.from_user.id]
             return
 
         if chat_type in ['group', 'supergroup'] and not should_reply(message, client.me.id, client):
@@ -126,7 +132,23 @@ async def handle_messages(client: Client, message: Message) -> None:
         log_action("DEBUG", "⏰ Updated user response time", user_info)
 
     except Exception as e:
-        user_info = fetch_user(message)
+        # Safely fetch user info for error logging
+        try:
+            user_info = fetch_user(message)
+        except:
+            user_info = {
+                "user_id": "Unknown",
+                "username": "Unknown",
+                "full_name": "Unknown",
+                "first_name": "Unknown",
+                "last_name": None,
+                "chat_id": message.chat.id if message.chat else "Unknown",
+                "chat_type": "Unknown",
+                "chat_title": "Unknown",
+                "chat_username": "Unknown",
+                "chat_link": "Unknown"
+            }
+        
         log_action("ERROR", f"❌ Error handling message: {e}", user_info)
         try:
             await message.reply_text(get_error())
