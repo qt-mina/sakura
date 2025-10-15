@@ -25,28 +25,32 @@ async def get_response(
     user_message: str,
     user_id: int,
     user_info: Dict[str, any],
-    image_bytes: Optional[bytes] = None
+    image_bytes: Optional[bytes] = None,
+    save_history: bool = True
 ) -> Optional[str]:
     """Get response from Gemini API using ChatSession.
+    
+    Args:
+        user_message: The user's message
+        user_id: The user's ID
+        user_info: User information dict
+        image_bytes: Optional image bytes
+        save_history: Whether to save conversation history (False for channel messages)
     
     Returns:
         str: The AI response text
         None: If an error occurred or response is empty
     """
     user_name = user_info.get("first_name", "User")
-
-    # Convert user_message to plain string if it's not already
     message_text = str(user_message) if user_message else ""
-
-    log_action("DEBUG", f"🤖 Getting AI response for '{message_text}'", user_info)
 
     if not state.gemini_client:
         log_action("WARNING", "❌ Chat client not available", user_info)
         return None
 
     try:
-        # Get chat history
-        history = await get_history(user_id)
+        # Get chat history only if we're saving history
+        history = await get_history(user_id) if save_history else []
 
         # Build history in the correct format for Gemini
         formatted_history = []
@@ -71,7 +75,6 @@ async def get_response(
 
         # Send message and get response
         if image_bytes:
-            # Create a Part object with inline data
             image_part = genai.types.Part.from_bytes(
                 data=image_bytes,
                 mime_type="image/jpeg"
@@ -86,7 +89,7 @@ async def get_response(
         ai_response = response.text.strip() if response.text else None
 
         if not ai_response:
-            # Check why the response is empty and log cleanly
+            # Check why the response is empty
             finish_reason = None
             usage_info = ""
 
@@ -101,15 +104,14 @@ async def get_response(
                 total_tokens = getattr(metadata, 'total_token_count', 0) or 0
                 usage_info = f" [Tokens: {prompt_tokens} input + {candidate_tokens} output + {thought_tokens} thoughts = {total_tokens} total]"
 
-            # Clean, readable logs based on finish reason
             if 'MAX_TOKENS' in finish_reason:
                 log_action("WARNING", f"⚠️ AI response truncated (hit token limit){usage_info}", user_info)
             elif 'SAFETY' in finish_reason:
                 log_action("WARNING", f"⚠️ AI response blocked by safety filters{usage_info}", user_info)
             elif 'RECITATION' in finish_reason:
-                log_action("WARNING", f"⚠️ AI response blocked (detected copyrighted content){usage_info}", user_info)
+                log_action("WARNING", f"⚠️ AI response blocked (copyrighted content){usage_info}", user_info)
             else:
-                log_action("WARNING", f"⚠️ AI returned empty response (reason: {finish_reason or 'unknown'}){usage_info}", user_info)
+                log_action("WARNING", f"⚠️ AI returned empty response{usage_info}", user_info)
 
             return None
 
@@ -120,31 +122,30 @@ async def get_response(
             candidate_tokens = getattr(metadata, 'candidates_token_count', 0) or 0
             thought_tokens = getattr(metadata, 'thoughts_token_count', 0) or 0
             total_tokens = getattr(metadata, 'total_token_count', 0) or 0
-            
-            token_info = f" [Tokens: {prompt_tokens} input + {candidate_tokens} output"
-            if thought_tokens > 0:
-                token_info += f" + {thought_tokens} thoughts"
-            token_info += f" = {total_tokens} total]"
-            
-            log_action("INFO", f"✅ AI response generated: '{ai_response}'{token_info}", user_info)
-        else:
-            log_action("INFO", f"✅ AI response generated: '{ai_response}'", user_info)
 
-        # Update history with plain string
-        await update_history(user_id, message_text, ai_response)
+            token_info = f" [Tokens: {prompt_tokens} + {candidate_tokens}"
+            if thought_tokens > 0:
+                token_info += f" + {thought_tokens}"
+            token_info += f" = {total_tokens}]"
+
+            log_action("INFO", f"✅ AI response generated{token_info}", user_info)
+        else:
+            log_action("INFO", f"✅ AI response generated", user_info)
+
+        # Update history only if save_history is True
+        if save_history:
+            await update_history(user_id, message_text, ai_response)
 
         return ai_response
 
     except Exception as e:
-        # Extract just the error type and message, not the full traceback
         error_type = type(e).__name__
         error_msg = str(e)
 
-        # Clean up common Gemini API errors for better readability
         if "429" in error_msg or "quota" in error_msg.lower():
-            log_action("ERROR", f"❌ AI API rate limit exceeded (quota exhausted)", user_info)
+            log_action("ERROR", f"❌ AI API rate limit exceeded", user_info)
         elif "401" in error_msg or "api key" in error_msg.lower():
-            log_action("ERROR", f"❌ AI API authentication failed (invalid API key)", user_info)
+            log_action("ERROR", f"❌ AI API authentication failed", user_info)
         elif "404" in error_msg or "not found" in error_msg.lower():
             log_action("ERROR", f"❌ AI model not found ({AI_MODEL})", user_info)
         elif "timeout" in error_msg.lower():
@@ -152,7 +153,6 @@ async def get_response(
         elif "connection" in error_msg.lower():
             log_action("ERROR", f"❌ AI API connection failed", user_info)
         else:
-            # For unexpected errors, show type and brief message
-            log_action("ERROR", f"❌ AI API error: {error_type} - {error_msg[:100]}", user_info)
+            log_action("ERROR", f"❌ AI API error: {error_type}", user_info)
 
         return None
