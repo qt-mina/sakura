@@ -1,5 +1,6 @@
 # All dependencies
 
+pydub
 psutil
 uvloop
 valkey
