@@ -103,7 +103,10 @@ async def generate_voice(text: str) -> BytesIO | None:
         return None
     
     try:
-        logger.info(f"🎤 Generating voice for text: '{text}'")
+        # Log character count before generation
+        char_count = len(text)
+        logger.info(f"🎤 Generating voice for text: '{text[:50]}...' ({char_count} characters)")
+        
         audio_stream = client.text_to_speech.convert(
             text=text,
             voice_id=VOICE_ID,
@@ -111,8 +114,12 @@ async def generate_voice(text: str) -> BytesIO | None:
         )
         
         audio_bytes = b""
-        async for audio_stream in audio_stream:
-            audio_bytes += audio_stream
+        async for chunk in audio_stream:
+            audio_bytes += chunk
+        
+        # Log successful generation with usage info
+        audio_size_kb = len(audio_bytes) / 1024
+        logger.info(f"📊 ElevenLabs Usage: {char_count} characters | Audio size: {audio_size_kb:.2f} KB")
         
         # Try to convert to OGG if FFmpeg is available
         if FFMPEG_AVAILABLE:
@@ -122,7 +129,8 @@ async def generate_voice(text: str) -> BytesIO | None:
                 mp3_audio.export(ogg_buffer, format="ogg", codec="libopus")
                 ogg_buffer.seek(0)
                 ogg_buffer.name = "voice.ogg"
-                logger.info("✅ Voice generated and converted to OGG successfully.")
+                ogg_size_kb = len(ogg_buffer.getvalue()) / 1024
+                logger.info(f"✅ Voice converted to OGG (compressed to {ogg_size_kb:.2f} KB)")
                 return ogg_buffer
             except Exception as conv_error:
                 logger.warning(f"⚠️ OGG conversion failed: {conv_error}. Falling back to MP3.")
@@ -138,6 +146,46 @@ async def generate_voice(text: str) -> BytesIO | None:
         return None
     except Exception as e:
         logger.error(f"❌ An unexpected error occurred during voice generation: {e}")
+        return None
+
+
+async def get_elevenlabs_usage() -> Dict[str, any] | None:
+    """
+    Retrieves current ElevenLabs subscription usage information.
+    
+    Returns:
+        Dictionary with usage information or None if error occurred.
+    """
+    if not ELEVENLABS_API_KEY:
+        logger.warning("⚠️ ElevenLabs API key is not configured.")
+        return None
+    
+    try:
+        user = await client.user.get()
+        subscription = user.subscription
+        
+        usage_info = {
+            "character_count": subscription.character_count,
+            "character_limit": subscription.character_limit,
+            "characters_remaining": subscription.character_limit - subscription.character_count,
+            "usage_percentage": (subscription.character_count / subscription.character_limit * 100) if subscription.character_limit > 0 else 0,
+            "next_character_count_reset_unix": subscription.next_character_count_reset_unix,
+            "tier": subscription.tier
+        }
+        
+        logger.info(f"📊 ElevenLabs Subscription Usage:")
+        logger.info(f"   Characters used: {usage_info['character_count']:,} / {usage_info['character_limit']:,}")
+        logger.info(f"   Characters remaining: {usage_info['characters_remaining']:,}")
+        logger.info(f"   Usage: {usage_info['usage_percentage']:.1f}%")
+        logger.info(f"   Tier: {usage_info['tier']}")
+        
+        return usage_info
+        
+    except ApiError as e:
+        logger.error(f"❌ ElevenLabs API error while fetching usage: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"❌ Error fetching ElevenLabs usage: {e}")
         return None
 
 
