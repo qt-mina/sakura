@@ -15,7 +15,7 @@ from Sakura.Chat.voice import generate_voice
 from Sakura.Database.cache import set_last_message, get_last_message
 from Sakura.Services.broadcast import execute_broadcast
 from Sakura import state
-from Sakura.Core.config import OWNER_ID
+from Sakura.Core.config import OWNER_ID, COMMAND_PREFIXES
 from Sakura.Modules.stickers import handle_sticker
 from Sakura.Modules.image import handle_image
 from Sakura.Modules.poll import handle_poll
