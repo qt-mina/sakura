@@ -23,7 +23,8 @@ from Sakura.Services.tracking import track_user
 
 @Client.on_message(
     (filters.text | filters.sticker | filters.voice | filters.video_note |
-     filters.photo | filters.document | filters.poll | filters.animation) & ~filters.regex(r"^/")
+     filters.photo | filters.document | filters.poll | filters.animation) & 
+    ~filters.command(prefixes=COMMAND_PREFIXES)
 )
 async def handle_messages(client: Client, message: Message) -> None:
     """Handle all types of messages"""
