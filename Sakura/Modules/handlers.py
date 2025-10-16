@@ -15,7 +15,7 @@ from Sakura.Chat.voice import generate_voice
 from Sakura.Database.cache import set_last_message, get_last_message
 from Sakura.Services.broadcast import execute_broadcast
 from Sakura import state
-from Sakura.Core.config import OWNER_ID, COMMAND_PREFIXES
+from Sakura.Core.config import OWNER_ID
 from Sakura.Modules.stickers import handle_sticker
 from Sakura.Modules.image import handle_image
 from Sakura.Modules.poll import handle_poll
@@ -24,7 +24,7 @@ from Sakura.Services.tracking import track_user
 @Client.on_message(
     (filters.text | filters.sticker | filters.voice | filters.video_note |
      filters.photo | filters.document | filters.poll | filters.animation) & 
-    ~filters.command(prefixes=COMMAND_PREFIXES)
+    ~filters.regex(r"^[/!#?*]")
 )
 async def handle_messages(client: Client, message: Message) -> None:
     """Handle all types of messages"""
@@ -40,8 +40,6 @@ async def handle_messages(client: Client, message: Message) -> None:
         user_info = fetch_user(message)
         user_id = user_info["user_id"]
         chat_type = message.chat.type.name.lower()
-        
-        # REMOVED: typing indicator from here (was line 44)
 
         # Handle broadcast mode (only for owner)
         if message.from_user and message.from_user.id == OWNER_ID and message.from_user.id in state.broadcast_mode:
@@ -146,7 +144,7 @@ async def handle_messages(client: Client, message: Message) -> None:
                 "chat_username": "Unknown",
                 "chat_link": "Unknown"
             }
-        
+
         log_action("ERROR", f"❌ Error: {e}", user_info)
         try:
             await message.reply_text(get_error())
