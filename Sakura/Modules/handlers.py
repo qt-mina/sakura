@@ -11,7 +11,7 @@ from Sakura.Chat.images import reply_image
 from Sakura.Chat.polls import reply_poll
 from Sakura.Modules.typing import send_typing
 from Sakura.Chat.chat import get_response
-from Sakura.Chat.voice import generate_voice
+from Sakura.Chat.voice import generate_voice, should_send_voice, get_voice_intro
 from Sakura.Database.cache import set_last_message, get_last_message
 from Sakura.Services.broadcast import execute_broadcast
 from Sakura import state
@@ -23,8 +23,7 @@ from Sakura.Services.tracking import track_user
 
 @Client.on_message(
     (filters.text | filters.sticker | filters.voice | filters.video_note |
-     filters.photo | filters.document | filters.poll | filters.animation) & 
-    ~filters.regex(r"^[/!#?*]")
+     filters.photo | filters.document | filters.poll | filters.animation) & ~filters.regex(r"^/")
 )
 async def handle_messages(client: Client, message: Message) -> None:
     """Handle all types of messages"""
@@ -71,10 +70,11 @@ async def handle_messages(client: Client, message: Message) -> None:
         user_message = message.text or message.caption or "Media message"
         log_action("INFO", f"💬 Message: '{user_message}'", user_info)
 
+        # Handle explicit "in your voice" request
         if "in your voice" in user_message.lower():
             last_bot_message = await get_last_message(user_id)
             if last_bot_message:
-                log_action("INFO", "🎤 Sending voice message", user_info)
+                log_action("INFO", "🎤 Sending voice message (explicit request)", user_info)
                 await client.send_chat_action(chat_id=message.chat.id, action=ChatAction.RECORD_AUDIO)
                 voice_data = await generate_voice(last_bot_message)
                 if voice_data:
@@ -111,16 +111,23 @@ async def handle_messages(client: Client, message: Message) -> None:
             except Exception as cache_error:
                 log_action("WARNING", f"⚠️ Failed to cache message", user_info)
 
-        # Try to send as voice (10% chance)
+        # Determine if voice should be used (contextual OR random 10%)
+        should_use_voice = should_send_voice(user_message, user_info) or random.random() < 0.1
+        
         voice_data = None
-        if random.random() < 0.1:
+        if should_use_voice:
+            # Add contextual intro if appropriate
+            voice_intro = get_voice_intro(user_message)
+            voice_text = voice_intro + ai_response
+            
+            log_action("INFO", f"🎙️ Generating contextual voice message", user_info)
             await client.send_chat_action(chat_id=message.chat.id, action=ChatAction.RECORD_AUDIO)
-            voice_data = await generate_voice(ai_response)
+            voice_data = await generate_voice(voice_text)
 
         # Send response (voice or text)
         if voice_data:
             await message.reply_voice(voice=voice_data)
-            log_action("INFO", "✅ Voice response sent", user_info)
+            log_action("INFO", "✅ Voice response sent (contextual)", user_info)
         else:
             await message.reply_text(ai_response)
             log_action("INFO", "✅ Response sent", user_info)
@@ -144,7 +151,7 @@ async def handle_messages(client: Client, message: Message) -> None:
                 "chat_username": "Unknown",
                 "chat_link": "Unknown"
             }
-
+        
         log_action("ERROR", f"❌ Error: {e}", user_info)
         try:
             await message.reply_text(get_error())
