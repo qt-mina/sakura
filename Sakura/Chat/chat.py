@@ -63,10 +63,11 @@ async def get_response(
                 })
 
         # Initialize chat session with system prompt and history
+        # CHANGED: Removed user name from system instruction to avoid overusing it
         chat_session = state.gemini_client.chats.create(
             model=AI_MODEL,
             config={
-                "system_instruction": f"{SAKURA_PROMPT}\nUser name: {user_name}",
+                "system_instruction": SAKURA_PROMPT,
                 "temperature": 0.5,
                 "max_output_tokens": 1500,
             },
