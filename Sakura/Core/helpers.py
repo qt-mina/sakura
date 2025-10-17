@@ -11,7 +11,7 @@ from Sakura.Core.config import SESSION_TTL
 
 def fetch_user(msg: Message) -> Dict[str, any]:
     """Extract user and chat information from message"""
-    
+
     # Handle channel messages (no from_user, only sender_chat)
     if msg.sender_chat and not msg.from_user:
         c = msg.chat
@@ -29,19 +29,27 @@ def fetch_user(msg: Message) -> Dict[str, any]:
         }
         logger.info(
             f"📑 Channel message: {info['full_name']} (@{info['username']}) "
-            f"in {info['chat_title']} [{info['chat_id']}]"
+            f"in {info['chat_title']} [{info['chat_id']}] | "
+            f"👤 User: {info['chat_link']} | 💬 Chat: {info['chat_link']}"
         )
         return info
-    
+
     # Handle regular user messages
     u = msg.from_user
     c = msg.chat
+    
+    # Generate user link
+    user_link = f"tg://user?id={u.id}"
+    if u.username:
+        user_link = f"https://t.me/{u.username}"
+    
     info = {
         "user_id": u.id,
         "username": u.username,
         "full_name": u.full_name,
         "first_name": u.first_name,
         "last_name": u.last_name,
+        "user_link": user_link,
         "chat_id": c.id,
         "chat_type": str(c.type).split('.')[-1].lower(),
         "chat_title": c.title or c.first_name or "",
@@ -50,7 +58,8 @@ def fetch_user(msg: Message) -> Dict[str, any]:
     }
     logger.info(
         f"📑 User: {info['full_name']} (@{info['username']}) "
-        f"in {info['chat_title']} [{info['chat_id']}]"
+        f"in {info['chat_title']} [{info['chat_id']}] | "
+        f"👤 User Link: {info['user_link']} | 💬 Chat Link: {info['chat_link']}"
     )
     return info
 
@@ -77,24 +86,24 @@ def log_action(level: str, message: str, user_info: Dict[str, any]) -> None:
 
 def should_reply(message: Message, bot_id: int, client: Client = None) -> bool:
     """Check if bot should reply to a group message (Pyrogram way)"""
-    
+
     # Check if replying to bot's message
     if message.reply_to_message and message.reply_to_message.from_user:
         if message.reply_to_message.from_user.id == bot_id:
             return True
-    
+
     # Check for mentions in entities
     if message.entities:
         for entity in message.entities:
             if entity.type == "mention" or entity.type == "text_mention":
                 return True
-    
+
     # Check for mentions in caption entities (for media)
     if message.caption_entities:
         for entity in message.caption_entities:
             if entity.type == "mention" or entity.type == "text_mention":
                 return True
-    
+
     # Pyrogram fallback: Check text/caption directly for @username mention
     # This catches cases where entities aren't parsed (like channel forwards)
     if client and client.me and client.me.username:
@@ -102,12 +111,12 @@ def should_reply(message: Message, bot_id: int, client: Client = None) -> bool:
         bot_mention = f"@{client.me.username}".lower()
         if bot_mention in text.lower():
             return True
-    
+
     # Also check for "sakura" keyword (original behavior)
     user_message = message.text or message.caption or ""
     if "sakura" in user_message.lower():
         return True
-    
+
     return False
 
 def get_mention(user: User) -> str:
