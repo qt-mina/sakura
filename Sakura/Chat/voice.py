@@ -4,7 +4,6 @@ import random
 import subprocess
 import sys
 import platform
-import warnings
 from io import BytesIO
 from typing import Dict
 from elevenlabs.client import AsyncElevenLabs
@@ -13,9 +12,6 @@ from Sakura.Core.config import ELEVENLABS_API_KEY, VOICE_ID
 from Sakura.Core.logging import logger
 from Sakura.Core.helpers import log_action
 
-# Suppress pydub ffmpeg warning during import (we handle installation ourselves)
-warnings.filterwarnings("ignore", message="Couldn't find ffmpeg or avconv")
-
 # Check if pydub and ffmpeg are available
 try:
     from pydub import AudioSegment
@@ -23,9 +19,6 @@ try:
 except ImportError:
     AudioSegment = None
     which = None
-
-# Re-enable warnings after import
-warnings.filterwarnings("default", message="Couldn't find ffmpeg or avconv")
 
 client = AsyncElevenLabs(api_key=ELEVENLABS_API_KEY)
 
