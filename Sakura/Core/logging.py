@@ -26,14 +26,23 @@ class ColoredFormatter(logging.Formatter):
 
     def __init__(self, fmt=None, datefmt=None):
         super().__init__(fmt, datefmt)
+        # TIMEZONE CONFIGURATION
         # Bangladesh timezone is UTC+6
-        self.bd_tz = timezone(timedelta(hours=6))
+        # To change timezone for your country, modify the hours offset:
+        # UTC+0 (UK): timedelta(hours=0)
+        # UTC+1 (Germany): timedelta(hours=1)
+        # UTC+5:30 (India): timedelta(hours=5, minutes=30)
+        # UTC-5 (EST USA): timedelta(hours=-5)
+        # UTC-8 (PST USA): timedelta(hours=-8)
+        # UTC+8 (China/Singapore): timedelta(hours=8)
+        # UTC+9 (Japan): timedelta(hours=9)
+        self.local_tz = timezone(timedelta(hours=6))
 
     # Formats the log record with appropriate colors
     def format(self, record):
-        # Add Bangladesh time to the record
-        bd_time = datetime.now(self.bd_tz)
-        record.bd_time = bd_time.strftime('%I:%M:%S %p')
+        # Add local time to the record
+        local_time = datetime.now(self.local_tz)
+        record.local_time = local_time.strftime('%I:%M:%S %p')
         
         # Get the original formatted message
         original_format = super().format(record)
@@ -61,7 +70,7 @@ def setup_logging():
 
     # Create colored formatter with enhanced format
     formatter = ColoredFormatter(
-        fmt='%(bd_time)s - %(name)s - [%(levelname)s] - %(message)s'
+        fmt='%(local_time)s - %(name)s - [%(levelname)s] - %(message)s'
     )
     console_handler.setFormatter(formatter)
 
