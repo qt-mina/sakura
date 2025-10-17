@@ -1,5 +1,6 @@
 # Sakura/Core/logging.py
 import logging
+from datetime import datetime, timezone, timedelta
 
 # LOGGING SETUP
 # Color codes for logging
@@ -22,9 +23,18 @@ class ColoredFormatter(logging.Formatter):
         'WARNING': Colors.BLUE,
         'ERROR': Colors.RED,
     }
-    
+
+    def __init__(self, fmt=None, datefmt=None):
+        super().__init__(fmt, datefmt)
+        # Bangladesh timezone is UTC+6
+        self.bd_tz = timezone(timedelta(hours=6))
+
     # Formats the log record with appropriate colors
     def format(self, record):
+        # Add Bangladesh time to the record
+        bd_time = datetime.now(self.bd_tz)
+        record.bd_time = bd_time.strftime('%I:%M:%S %p')
+        
         # Get the original formatted message
         original_format = super().format(record)
         # Get color based on log level
@@ -40,21 +50,21 @@ def setup_logging():
     """Setup colored logging configuration"""
     logger = logging.getLogger("SAKURA 🌸")
     logger.setLevel(logging.DEBUG)
-    
+
     # Remove existing handlers
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
-    
+
     # Create console handler
     console_handler = logging.StreamHandler()
     console_handler.setLevel(logging.DEBUG)
-    
+
     # Create colored formatter with enhanced format
     formatter = ColoredFormatter(
-        fmt='%(name)s - [%(levelname)s] - %(message)s'
+        fmt='%(bd_time)s - %(name)s - [%(levelname)s] - %(message)s'
     )
     console_handler.setFormatter(formatter)
-    
+
     # Add handler to logger
     logger.addHandler(console_handler)
     return logger
