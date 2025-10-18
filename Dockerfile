@@ -31,9 +31,5 @@ COPY . .
 # Pre-compile bytecode to reduce startup overhead
 RUN python -m compileall -q .
 
-# Optional: Use non-root user for security
-# RUN useradd -m -u 1000 botuser && chown -R botuser:botuser /app
-# USER botuser
-
 # Run with optimizations enabled
 CMD ["python", "-O", "-m", "Sakura"]
