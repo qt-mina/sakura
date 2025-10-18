@@ -3,7 +3,7 @@
 [![GitHub Created At](https://img.shields.io/github/created-at/qt-sakura/sakurachat-bot?style=for-the-badge&logo=github&label=Created&color=orange)](https://github.com/qt-sakura/sakurachat-bot)
 
 **Sakura Bot** is your soft, helpful, and caring conversational partner, embodying Sakura Haruno's supportive and gentle persona.
-From heartfelt check-ins to playful sticker replies — Sakura's got you covered.
+From heartfelt check-ins to playful sticker replies, Sakura's got you covered.
 
 ---
 
@@ -17,20 +17,20 @@ Whether you're looking to:
 
 **Sakura Bot** brings emotional depth, playful fun, and a caring energy right into your Telegram chat window.
 
-> **"Every line feels like her lips are almost touching yours—yet holding the kiss."** 🌙💖
+> **"Every line feels like her lips are almost touching yours, yet holding the kiss."** 🌙💖
 
 ---
 
 ## ✨ Features
 
-- **Contextual AI-Powered Conversations** — Powered by **Google Gemini** and **ElevenLabs**, Sakura provides thoughtful, context-aware responses tailored to the conversation.
-- **Image, Poll, and Voice Message Analysis** — Send an image, poll, or voice message, and Sakura will analyze and comment on it.
-- **Contextual Emoji Reactions** — The bot automatically reacts to messages with animated emojis that match the context of the conversation.
-- **Sticker-Reply Support** — Reply to Sakura's messages with a sticker, and she'll send one back.
-- **Telegram Stars Integration** — Support the bot using Telegram Stars with the `/meow` command.
-- **Supporter Leaderboard** — View the top supporters with the `/fams` command.
-- **Group / Private Chats** — Sakura responds in private DMs or when "Sakura" is mentioned or replied to in a group.
-- **Enhanced Performance** — A robust backend with a **PostgreSQL** database and a **Valkey** cache ensures a fast and persistent user experience.
+- **Contextual AI-Powered Conversations** Powered by **Google Gemini** and **ElevenLabs**, Sakura provides thoughtful, context-aware responses tailored to the conversation.
+- **Image, Poll, and Voice Message Analysis** Send an image, poll, or voice message, and Sakura will analyze and comment on it.
+- **Contextual Emoji Reactions** The bot automatically reacts to messages with animated emojis that match the context of the conversation.
+- **Sticker-Reply Support** Reply to Sakura's messages with a sticker, and she'll send one back.
+- **Telegram Stars Integration** Support the bot using Telegram Stars with the `/meow` command.
+- **Supporter Leaderboard** View the top supporters with the `/fams` command.
+- **Group / Private Chats** Sakura responds in private DMs or when "Sakura" is mentioned or replied to in a group.
+- **Enhanced Performance** A robust backend with a **PostgreSQL** database and a **Valkey** cache ensures a fast and persistent user experience.
 
 ---
 
@@ -175,9 +175,9 @@ Telegram: [@asad_ofc](https://t.me/asad_ofc)
 ## 📄 License
 
 This bot is built for wholesome fun and free use.  
-**Attribution is appreciated — spread love, not shade.**
+**Attribution is appreciated, spread love, not shade.**
 
 ---
 
-> **Sakura Bot** — *Soft talks. Sweet vibes.*  
+> **Sakura Bot** *Soft talks. Sweet vibes.*  
 [Start now → @SluttySakuraBot](https://t.me/SluttySakuraBot)
