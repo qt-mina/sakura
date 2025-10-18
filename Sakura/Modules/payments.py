@@ -49,7 +49,7 @@ async def meow_command_handler(client: Client, message: Message) -> None:
         if message.chat.type == ChatType.PRIVATE:
             await send_invoice(client, message.chat.id, user_info, amount, message_effect_id=random.choice(EFFECTS))
         else:
-            await send_invoice(client, message.chat.id, user_info, amount)
+            await send_invoice(client, message.chat.id, user_info, amount, reply_to_message_id=message.id)
 
         # Tracking and logging at the bottom
         user_info = fetch_user(message)
@@ -119,7 +119,7 @@ async def fams_command_handler(client: Client, message: Message) -> None:
         log_action("ERROR", f"❌ Error in buyers command: {e}", user_info)
         await message.reply_text(get_error())
 
-async def send_invoice(client: Client, chat_id: int, user_info: dict, amount: int, message_effect_id: str = None):
+async def send_invoice(client: Client, chat_id: int, user_info: dict, amount: int, message_effect_id: str = None, reply_to_message_id: int = None):
     """Sends a payment invoice."""
     try:
         if message_effect_id:
@@ -134,6 +134,8 @@ async def send_invoice(client: Client, chat_id: int, user_info: dict, amount: in
                 'prices': [{'label': '✨ Sakura Star', 'amount': amount}],
                 'message_effect_id': message_effect_id
             }
+            if reply_to_message_id:
+                payload['reply_to_message_id'] = reply_to_message_id
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                     url,
@@ -144,7 +146,7 @@ async def send_invoice(client: Client, chat_id: int, user_info: dict, amount: in
                     if not result.get('ok'):
                         log_action("ERROR", f"❌ API Error sending invoice with effect: {result.get('description')}", user_info)
                         # Fallback to regular invoice
-                        await send_invoice(client, chat_id, user_info, amount)
+                        await send_invoice(client, chat_id, user_info, amount, reply_to_message_id=reply_to_message_id)
         else:
             await client.send_invoice(
                 chat_id=chat_id,
@@ -153,7 +155,8 @@ async def send_invoice(client: Client, chat_id: int, user_info: dict, amount: in
                 payload=f"sakura_star_{user_info['user_id']}",
                 provider_token="",  # provider_token is not needed for Stars
                 currency="XTR",
-                prices=[LabeledPrice(label='✨ Sakura Star', amount=amount)]
+                prices=[LabeledPrice(label='✨ Sakura Star', amount=amount)],
+                reply_to_message_id=reply_to_message_id
             )
         log_action("INFO", f"✅ Invoice sent for {amount} stars", user_info)
     except Exception as e:
